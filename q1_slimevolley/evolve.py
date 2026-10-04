@@ -13,6 +13,14 @@ is instead the genome with the best mean on a fixed validation seed set
 (--val-top genomes per generation, --val-episodes games each). Validation games
 are real environment steps and are charged to the budget like any other.
 
+--survival-bonus B shapes the *selection* fitness only: each episode counts as
+score + B * steps/3000. Against this opponent ~90% of early games are 5-0
+losses and the few points won are mostly decided by the serve, so raw score
+gives selection almost nothing to work with; time survived does vary and
+correlates with score. With B < 1 a point always outweighs any amount of
+survival. The champion is still chosen on raw validation score, and every
+reported number is raw score.
+
 Writes to runs/<run-id>/ — see LOGS.md for every file and column.
 """
 
@@ -52,6 +60,7 @@ HISTORY_COLUMNS = [
     "median_fitness", "std_fitness", "min_fitness", "n_species",
     "best_nodes", "best_conns", "mean_ep_steps", "timeout_frac",
     "gen_steps", "cum_steps", "val_best", "champion_val",
+    "best_raw", "mean_raw",
 ]
 
 
@@ -121,10 +130,12 @@ class BudgetReached(Exception):
 class RunRecorder(neat.reporting.BaseReporter):
     """Writes the per-generation logs, tracks the champion, enforces the budget."""
 
-    def __init__(self, run_dir: Path, limit: int):
+    def __init__(self, run_dir: Path, limit: int, per_process_cap: int, workers: int):
         self.run_dir = run_dir
         self.budget_log = run_dir / "budget_log.jsonl"
         self.limit = limit
+        self.per_process_cap = per_process_cap
+        self.workers = workers
         self.history: list[list] = []
         self.episodes: dict[int, list[dict]] = {}  # genome key -> this gen's episodes
         self.validated: list[dict] = []             # this gen's validation rows
@@ -160,6 +171,7 @@ class RunRecorder(neat.reporting.BaseReporter):
                     "gen": gen, "key": g.key,
                     "species": species.get_species_id(g.key),
                     "nodes": nodes, "conns": conns, "fitness": g.fitness,
+                    "raw_fitness": statistics.mean(e["score"] for e in eps),
                     "scores": [e["score"] for e in eps],
                     "steps": [e["steps"] for e in eps],
                     "points_for": [e["points_for"] for e in eps],
@@ -173,6 +185,7 @@ class RunRecorder(neat.reporting.BaseReporter):
                 fh.write(json.dumps({"gen": gen, **row}) + "\n")
 
         all_eps = [e for g in genomes for e in self.episodes[g.key]]
+        raw = [statistics.mean(e["score"] for e in self.episodes[g.key]) for g in genomes]
         spent = total_steps(self.budget_log)
         gen_steps = spent - self._last_steps
         self._last_steps = spent
@@ -186,19 +199,25 @@ class RunRecorder(neat.reporting.BaseReporter):
             gen_steps, spent,
             max(r["val_mean"] for r in self.validated),
             self.champion_meta["val_mean"],
+            max(raw), statistics.mean(raw),
         ])
         self.write_outputs()
         self._gen += 1
 
         h = dict(zip(HISTORY_COLUMNS, self.history[-1]))
         print(f"  [gen {gen}] train best {h['best_fitness']:+.2f} mean {h['mean_fitness']:+.2f}"
+              f" (raw {h['best_raw']:+.2f}/{h['mean_raw']:+.2f})"
               f" | val best {h['val_best']:+.2f} champion {h['champion_val']:+.2f}"
               f" | species {h['n_species']} | best size {nodes}n/{conns}c"
               f" | ep len {h['mean_ep_steps']:.0f} timeouts {h['timeout_frac']:.0%}", flush=True)
         print(f"  [budget] {spent:,} / {self.limit:,} steps (+{gen_steps:,} this gen)", flush=True)
         # Stop at a generation boundary rather than letting a worker hit its cap
         # mid-generation, which throws the whole partial generation away.
-        if spent + gen_steps > self.limit:
+        # Workers don't share load perfectly, so also check the busiest worker
+        # against its own cap (assume it could take twice its fair share).
+        busiest = max(per_pid_steps(self.budget_log).values(), default=0)
+        if (spent + gen_steps > self.limit
+                or busiest + 2 * gen_steps / self.workers > self.per_process_cap):
             print("  [budget] another generation would not fit — stopping", flush=True)
             raise BudgetReached
 
@@ -212,6 +231,17 @@ class RunRecorder(neat.reporting.BaseReporter):
             with (self.run_dir / "champion.pkl").open("wb") as fh:
                 pickle.dump(self.champion, fh)
             (self.run_dir / "champion.json").write_text(json.dumps(self.champion_meta, indent=2))
+
+
+def per_pid_steps(budget_log: Path) -> dict[int, int]:
+    """Latest cumulative step count per worker (read-only view of budget_log)."""
+    latest: dict[int, int] = {}
+    if budget_log.exists():
+        for line in budget_log.read_text().splitlines():
+            if line.strip():
+                rec = json.loads(line)
+                latest[rec["pid"]] = max(latest.get(rec["pid"], 0), rec["cum_steps"])
+    return latest
 
 
 def git_commit() -> str:
@@ -241,7 +271,11 @@ def main() -> int:
                     help="top genomes by training fitness re-scored on validation seeds each generation")
     ap.add_argument("--val-episodes", type=int, default=20,
                     help="fixed validation seeds used to pick the champion")
+    ap.add_argument("--survival-bonus", type=float, default=0.0,
+                    help="selection fitness per episode = score + B * steps/3000 (B < 1)")
     args = ap.parse_args()
+    if not 0 <= args.survival_bonus < 1:
+        ap.error("--survival-bonus must be in [0, 1) so a point always outweighs survival")
 
     run_dir = HERE / "runs" / args.run_id
     if (run_dir / "budget_log.jsonl").exists():
@@ -262,10 +296,10 @@ def main() -> int:
     config = load_config(config_path)
     pop = neat.Population(config, seed=args.seed)
     pop.add_reporter(neat.StdOutReporter(False))
-    recorder = RunRecorder(run_dir, args.budget)
+    per_process_cap = max(1, args.budget // max(1, args.workers))
+    recorder = RunRecorder(run_dir, args.budget, per_process_cap, args.workers)
     pop.add_reporter(recorder)
 
-    per_process_cap = max(1, args.budget // max(1, args.workers))
     stopped_early = False
 
     ctx = mp.get_context("spawn")
@@ -277,14 +311,16 @@ def main() -> int:
     def evaluate(genomes, cfg):
         nonlocal generation
         seeds = train_seeds(args.seed, generation, args.episodes)
-        results = pool.map(_eval_one, [(pickle.dumps(g), seeds) for _, g in genomes])
+        # chunksize=1: hand out genomes one at a time so workers stay balanced.
+        results = pool.map(_eval_one, [(pickle.dumps(g), seeds) for _, g in genomes], chunksize=1)
         recorder.episodes = {}
         for (_, genome), eps in zip(genomes, results):
-            genome.fitness = statistics.mean(e["score"] for e in eps)
+            genome.fitness = statistics.mean(
+                e["score"] + args.survival_bonus * e["steps"] / 3000 for e in eps)
             recorder.episodes[genome.key] = eps
 
         top = sorted((g for _, g in genomes), key=lambda g: g.fitness, reverse=True)[:args.val_top]
-        val_results = pool.map(_eval_one, [(pickle.dumps(g), vseeds) for g in top])
+        val_results = pool.map(_eval_one, [(pickle.dumps(g), vseeds) for g in top], chunksize=1)
         recorder.validated = []
         for genome, eps in zip(top, val_results):
             val_mean = statistics.mean(e["score"] for e in eps)
@@ -323,7 +359,7 @@ def main() -> int:
         m = recorder.champion_meta
         print(f"  champion: genome {m['key']} from gen {m['generation']}, "
               f"val mean {m['val_mean']:+.2f} over {args.val_episodes} games "
-              f"(train fitness {m['train_fitness']:+.2f} — biased upward, don't report it)")
+              f"(train fitness {m['train_fitness']:+.2f} — shaped/biased upward, don't report it)")
         print(f"  headline number: python evaluate.py --winner {run_dir / 'champion.pkl'}")
     return 0
 
