@@ -1,14 +1,19 @@
 """Evolve a slime-volleyball agent with NEAT.
 
 Usage:
-    python evolve.py --generations 50
-    python evolve.py --budget 2000000 --generations 20 --workers 4
-    python evolve.py --episodes 5 --seed 0 --run-id best   # fitness = mean of 5 seeded episodes
+    python evolve.py --budget 5000000 --run-id sample      # short sample run
+    python evolve.py --seed 0 --run-id best                # full 100M-step run
 
-Writes to runs/<run-id>/:
-    fitness_history.csv   generation, best fitness, mean fitness
-    champion.pkl          the best genome found
-    budget_log.jsonl      step accounting (see budget.py)
+The run ends when the step budget is spent (--generations is only a safety cap).
+
+Fitness is the mean score over --episodes seeded games, the same seeds for every
+genome in a generation and fresh ones each generation. Because those seeds vary
+in difficulty, training fitness is a noisy, biased-upward number: the champion
+is instead the genome with the best mean on a fixed validation seed set
+(--val-top genomes per generation, --val-episodes games each). Validation games
+are real environment steps and are charged to the budget like any other.
+
+Writes to runs/<run-id>/ — see LOGS.md for every file and column.
 """
 
 from __future__ import annotations
@@ -16,12 +21,16 @@ from __future__ import annotations
 import argparse
 import copy
 import csv
+import json
 import multiprocessing as mp
 import os
 import pickle
 import random
+import shutil
 import statistics
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 import neat
@@ -30,24 +39,32 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import slimevolley  # noqa: E402
 from budget import BudgetExhausted, BudgetedEnv, StepBudget, total_steps  # noqa: E402
-from episode import play_episode  # noqa: E402
+from episode import run_episode  # noqa: E402
 
 HERE = Path(__file__).parent
-TRAIN_SEED_LIMIT = 1_000_000  # training episode seeds are drawn below this
+TRAIN_SEED_LIMIT = 1_000_000  # training seeds are drawn from [0, TRAIN_SEED_LIMIT)
+HELDOUT_SEED_START = 1_000_000  # evaluate.py: HELDOUT_SEED_START + i
+VAL_SEED_START = 2_000_000  # champion selection: VAL_SEED_START + i
 _W: dict = {}
+
+HISTORY_COLUMNS = [
+    "generation", "best_fitness", "mean_fitness",
+    "median_fitness", "std_fitness", "min_fitness", "n_species",
+    "best_nodes", "best_conns", "mean_ep_steps", "timeout_frac",
+    "gen_steps", "cum_steps", "val_best", "champion_val",
+]
 
 
 def _init_worker(run_dir: str, config_path: str, per_process_cap: int) -> None:
     budget = StepBudget(Path(run_dir) / "budget_log.jsonl", per_process_cap)
     _W["budget"] = budget
     _W["env"] = BudgetedEnv(slimevolley.SlimeVolleyEnv(), budget)
-    _W["config"] = neat.Config(
-        neat.DefaultGenome,
-        neat.DefaultReproduction,
-        neat.DefaultSpeciesSet,
-        neat.DefaultStagnation,
-        config_path,
-    )
+    _W["config"] = load_config(config_path)
+
+
+def load_config(path) -> neat.Config:
+    return neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                       neat.DefaultSpeciesSet, neat.DefaultStagnation, str(path))
 
 
 def make_net(genome, config):
@@ -66,31 +83,35 @@ def train_seeds(run_seed: int, generation: int, n: int) -> list[int]:
 
     Sharing seeds within a generation means genomes are compared on the same
     serves (less selection noise); drawing fresh ones each generation stops the
-    population overfitting a fixed set. All are < TRAIN_SEED_LIMIT, so seeds at
-    or above it are never seen in training and can serve as held-out seeds.
+    population overfitting a fixed set.
     """
     rng = random.Random(f"{run_seed}:{generation}")
     return [rng.randrange(TRAIN_SEED_LIMIT) for _ in range(n)]
 
 
-def _eval_one(job: tuple[bytes, list[int]]) -> float:
-    """Fitness for one genome: mean score over the given seeded episodes."""
+def val_seeds(n: int) -> list[int]:
+    return [VAL_SEED_START + i for i in range(n)]
+
+
+def play_seeds(net, env, seeds: list[int]) -> list[dict]:
+    """One seeded episode per seed; per-episode stats as dicts."""
+    out = []
+    for seed in seeds:
+        env.seed(seed)
+        if hasattr(net, "reset"):
+            net.reset()  # recurrent nets carry state; clear it before each episode
+        out.append(run_episode(net, env).to_dict())
+    return out
+
+
+def _eval_one(job: tuple[bytes, list[int]]) -> list[dict]:
+    """Per-episode stats for one genome on the given seeds."""
     genome_bytes, seeds = job
-    genome = pickle.loads(genome_bytes)
-    net = make_net(genome, _W["config"])
-    env = _W["env"]
-    scores = []
+    net = make_net(pickle.loads(genome_bytes), _W["config"])
     try:
-        for seed in seeds:
-            env.seed(seed)
-            if hasattr(net, "reset"):
-                net.reset()  # recurrent nets carry state; clear it before each episode
-            scores.append(play_episode(net, env))
-    except BudgetExhausted:
+        return play_seeds(net, _W["env"], seeds)
+    finally:
         _W["budget"].flush()
-        raise
-    _W["budget"].flush()
-    return statistics.mean(scores)
 
 
 class BudgetReached(Exception):
@@ -98,40 +119,116 @@ class BudgetReached(Exception):
 
 
 class RunRecorder(neat.reporting.BaseReporter):
-    """Records per-generation fitness and stops the run when the budget is spent."""
+    """Writes the per-generation logs, tracks the champion, enforces the budget."""
 
-    def __init__(self, budget_log: Path, limit: int):
-        self.budget_log = budget_log
+    def __init__(self, run_dir: Path, limit: int):
+        self.run_dir = run_dir
+        self.budget_log = run_dir / "budget_log.jsonl"
         self.limit = limit
-        self.history: list[tuple[int, float, float]] = []
+        self.history: list[list] = []
+        self.episodes: dict[int, list[dict]] = {}  # genome key -> this gen's episodes
+        self.validated: list[dict] = []             # this gen's validation rows
         self.champion = None
-        self.champion_fitness = float("-inf")
+        self.champion_meta: dict = {"val_mean": float("-inf")}
         self._gen = 0
+        self._last_steps = 0
+        for name in ("genomes.jsonl", "validation.jsonl"):
+            (run_dir / name).unlink(missing_ok=True)
+
+    def consider(self, genome, val_mean: float, gen: int) -> None:
+        """Champion = best validation mean; ties go to the earlier genome."""
+        if val_mean > self.champion_meta["val_mean"]:
+            nodes, conns = genome.size()
+            # Snapshot: genomes survive into later generations and are
+            # re-evaluated in place, which would overwrite .fitness here.
+            self.champion = copy.deepcopy(genome)
+            self.champion_meta = {"key": genome.key, "generation": gen,
+                                  "train_fitness": genome.fitness,
+                                  "val_mean": val_mean, "nodes": nodes, "conns": conns}
 
     def post_evaluate(self, config, population, species, best_genome):
-        fitnesses = [g.fitness for g in population.values() if g.fitness is not None]
-        if fitnesses:
-            self.history.append(
-                (self._gen, max(fitnesses), statistics.mean(fitnesses))
-            )
-        if best_genome is not None and best_genome.fitness is not None:
-            if best_genome.fitness > self.champion_fitness:
-                self.champion_fitness = best_genome.fitness
-                # Snapshot: genomes survive into later generations and are
-                # re-evaluated in place, which would overwrite .fitness here.
-                self.champion = copy.deepcopy(best_genome)
+        gen = self._gen
+        genomes = [g for g in population.values() if g.fitness is not None]
+        fits = [g.fitness for g in genomes]
+
+        with (self.run_dir / "genomes.jsonl").open("a") as fh:
+            for g in genomes:
+                eps = self.episodes[g.key]
+                nodes, conns = g.size()
+                n_steps = sum(e["steps"] for e in eps)
+                fh.write(json.dumps({
+                    "gen": gen, "key": g.key,
+                    "species": species.get_species_id(g.key),
+                    "nodes": nodes, "conns": conns, "fitness": g.fitness,
+                    "scores": [e["score"] for e in eps],
+                    "steps": [e["steps"] for e in eps],
+                    "points_for": [e["points_for"] for e in eps],
+                    "points_against": [e["points_against"] for e in eps],
+                    "timeouts": sum(e["steps"] >= 3000 for e in eps),
+                    **{k: sum(e[k] for e in eps) / n_steps
+                       for k in ("act_fwd", "act_back", "act_jump", "act_idle")},
+                }) + "\n")
+        with (self.run_dir / "validation.jsonl").open("a") as fh:
+            for row in self.validated:
+                fh.write(json.dumps({"gen": gen, **row}) + "\n")
+
+        all_eps = [e for g in genomes for e in self.episodes[g.key]]
+        spent = total_steps(self.budget_log)
+        gen_steps = spent - self._last_steps
+        self._last_steps = spent
+        nodes, conns = best_genome.size()
+        self.history.append([
+            gen, max(fits), statistics.mean(fits),
+            statistics.median(fits), statistics.pstdev(fits), min(fits),
+            len(species.species), nodes, conns,
+            statistics.mean(e["steps"] for e in all_eps),
+            statistics.mean(e["steps"] >= 3000 for e in all_eps),
+            gen_steps, spent,
+            max(r["val_mean"] for r in self.validated),
+            self.champion_meta["val_mean"],
+        ])
+        self.write_outputs()
         self._gen += 1
 
-        spent = total_steps(self.budget_log)
-        print(f"  [budget] {spent:,} / {self.limit:,} steps", flush=True)
-        if spent >= self.limit:
-            print("  [budget] limit reached — stopping", flush=True)
+        h = dict(zip(HISTORY_COLUMNS, self.history[-1]))
+        print(f"  [gen {gen}] train best {h['best_fitness']:+.2f} mean {h['mean_fitness']:+.2f}"
+              f" | val best {h['val_best']:+.2f} champion {h['champion_val']:+.2f}"
+              f" | species {h['n_species']} | best size {nodes}n/{conns}c"
+              f" | ep len {h['mean_ep_steps']:.0f} timeouts {h['timeout_frac']:.0%}", flush=True)
+        print(f"  [budget] {spent:,} / {self.limit:,} steps (+{gen_steps:,} this gen)", flush=True)
+        # Stop at a generation boundary rather than letting a worker hit its cap
+        # mid-generation, which throws the whole partial generation away.
+        if spent + gen_steps > self.limit:
+            print("  [budget] another generation would not fit — stopping", flush=True)
             raise BudgetReached
+
+    def write_outputs(self) -> None:
+        """Rewritten every generation so a crash or Ctrl-C loses nothing."""
+        with (self.run_dir / "fitness_history.csv").open("w", newline="") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(HISTORY_COLUMNS)
+            writer.writerows(self.history)
+        if self.champion is not None:
+            with (self.run_dir / "champion.pkl").open("wb") as fh:
+                pickle.dump(self.champion, fh)
+            (self.run_dir / "champion.json").write_text(json.dumps(self.champion_meta, indent=2))
+
+
+def git_commit() -> str:
+    try:
+        sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=HERE, capture_output=True,
+                             text=True, check=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", "."], cwd=HERE,
+                               capture_output=True, text=True).stdout.strip()
+        return sha + ("-dirty" if dirty else "")
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--generations", type=int, default=50)
+    ap.add_argument("--generations", type=int, default=100_000,
+                    help="safety cap; the step budget normally ends the run")
     ap.add_argument("--budget", type=int, default=100_000_000,
                     help="total environment steps across all workers")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
@@ -140,51 +237,70 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--episodes", type=int, default=5,
                     help="seeded episodes per genome per generation; fitness is their mean")
+    ap.add_argument("--val-top", type=int, default=3,
+                    help="top genomes by training fitness re-scored on validation seeds each generation")
+    ap.add_argument("--val-episodes", type=int, default=20,
+                    help="fixed validation seeds used to pick the champion")
     args = ap.parse_args()
 
     run_dir = HERE / "runs" / args.run_id
+    if (run_dir / "budget_log.jsonl").exists():
+        sys.exit(f"{run_dir} already has a budget log; pick a new --run-id")
     run_dir.mkdir(parents=True, exist_ok=True)
-    budget_log = run_dir / "budget_log.jsonl"
+    shutil.copy(args.config, run_dir / "config.ini")
+    config_path = run_dir / "config.ini"
+    run_info = {
+        "argv": sys.argv, "args": vars(args), "git_commit": git_commit(),
+        "start_time": time.strftime("%Y-%m-%dT%H:%M:%S"), "python": sys.version.split()[0],
+        "neat_version": getattr(neat, "__version__", "unknown"),
+        "seed_ranges": {"train": [0, TRAIN_SEED_LIMIT],
+                        "heldout_start": HELDOUT_SEED_START,
+                        "val": [VAL_SEED_START, VAL_SEED_START + args.val_episodes]},
+    }
+    (run_dir / "run_args.json").write_text(json.dumps(run_info, indent=2))
 
-    config = neat.Config(
-        neat.DefaultGenome,
-        neat.DefaultReproduction,
-        neat.DefaultSpeciesSet,
-        neat.DefaultStagnation,
-        args.config,
-    )
+    config = load_config(config_path)
     pop = neat.Population(config, seed=args.seed)
     pop.add_reporter(neat.StdOutReporter(False))
-    recorder = RunRecorder(budget_log, args.budget)
+    recorder = RunRecorder(run_dir, args.budget)
     pop.add_reporter(recorder)
 
     per_process_cap = max(1, args.budget // max(1, args.workers))
     stopped_early = False
 
     ctx = mp.get_context("spawn")
-    pool = ctx.Pool(
-        processes=args.workers,
-        initializer=_init_worker,
-        initargs=(str(run_dir), args.config, per_process_cap),
-    )
-
+    pool = ctx.Pool(processes=args.workers, initializer=_init_worker,
+                    initargs=(str(run_dir), str(config_path), per_process_cap))
+    vseeds = val_seeds(args.val_episodes)
     generation = 0
 
     def evaluate(genomes, cfg):
         nonlocal generation
         seeds = train_seeds(args.seed, generation, args.episodes)
+        results = pool.map(_eval_one, [(pickle.dumps(g), seeds) for _, g in genomes])
+        recorder.episodes = {}
+        for (_, genome), eps in zip(genomes, results):
+            genome.fitness = statistics.mean(e["score"] for e in eps)
+            recorder.episodes[genome.key] = eps
+
+        top = sorted((g for _, g in genomes), key=lambda g: g.fitness, reverse=True)[:args.val_top]
+        val_results = pool.map(_eval_one, [(pickle.dumps(g), vseeds) for g in top])
+        recorder.validated = []
+        for genome, eps in zip(top, val_results):
+            val_mean = statistics.mean(e["score"] for e in eps)
+            recorder.validated.append({
+                "key": genome.key, "train_fitness": genome.fitness, "val_mean": val_mean,
+                "val_scores": [e["score"] for e in eps], "val_steps": [e["steps"] for e in eps],
+            })
+            recorder.consider(genome, val_mean, generation)
         generation += 1
-        payload = [(pickle.dumps(g), seeds) for _, g in genomes]
-        results = pool.map(_eval_one, payload)
-        for (_, genome), fitness in zip(genomes, results):
-            genome.fitness = fitness
 
     try:
         pop.run(evaluate, args.generations)
     except BudgetReached:
         stopped_early = True
     except BudgetExhausted as exc:
-        print(f"  [budget] {exc} — stopping", flush=True)
+        print(f"  [budget] {exc} — stopping (partial generation discarded)", flush=True)
         stopped_early = True
     except KeyboardInterrupt:
         print("  interrupted — writing what we have", flush=True)
@@ -193,22 +309,22 @@ def main() -> int:
         pool.close()
         pool.join()
 
-    with (run_dir / "fitness_history.csv").open("w", newline="") as fh:
-        writer = csv.writer(fh)
-        writer.writerow(["generation", "best_fitness", "mean_fitness"])
-        writer.writerows(recorder.history)
-
-    if recorder.champion is not None:
-        with (run_dir / "champion.pkl").open("wb") as fh:
-            pickle.dump(recorder.champion, fh)
+    recorder.write_outputs()
+    run_info.update({"end_time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                     "generations_completed": len(recorder.history),
+                     "steps_used": total_steps(recorder.budget_log),
+                     "stopped_early": stopped_early, "champion": recorder.champion_meta})
+    (run_dir / "run_args.json").write_text(json.dumps(run_info, indent=2))
 
     print(f"\nwrote {run_dir}/")
     print(f"  generations completed: {len(recorder.history)}")
-    print(f"  steps used:            {total_steps(budget_log):,}")
+    print(f"  steps used:            {run_info['steps_used']:,} / {args.budget:,}")
     if recorder.champion is not None:
-        print(f"  champion training fitness: {recorder.champion_fitness:.2f}")
-    if stopped_early:
-        print("  (stopped before the requested generation count)")
+        m = recorder.champion_meta
+        print(f"  champion: genome {m['key']} from gen {m['generation']}, "
+              f"val mean {m['val_mean']:+.2f} over {args.val_episodes} games "
+              f"(train fitness {m['train_fitness']:+.2f} — biased upward, don't report it)")
+        print(f"  headline number: python evaluate.py --winner {run_dir / 'champion.pkl'}")
     return 0
 
 
