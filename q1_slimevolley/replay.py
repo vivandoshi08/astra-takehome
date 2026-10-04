@@ -1,7 +1,13 @@
 """Watch a champion play. Writes an animated GIF you can scrub through.
 
     python replay.py --winner runs/run/champion.pkl --out champion.gif
-    python replay.py --winner runs/run/champion.pkl --seed 4242 --max-steps 1200
+    python replay.py --winner runs/run/champion.pkl --seed 1000042
+
+Defaults: seed 1_000_000 (the first held-out seed; seeds below 1_000_000 are
+training seeds) and 3000 max steps (the episode limit used in training, so the
+score shown is the full-episode score, not a truncated one). The NEAT config is
+read from `config.ini` next to `--winner` when present (the exact copy the run
+used), else from `--config`.
 
 The environment's own `env.render()` does not work: `slimevolley.py` is
 vendored from a project that predates gymnasium and its renderer imports
@@ -101,12 +107,17 @@ def draw_frame(game, step: int, score: float) -> Image.Image:
     return img
 
 
-def record(net, out: str, seed: int = 0, max_steps: int = 1400,
+def record(net, out: str, seed: int = 1_000_000, max_steps: int = 3000,
            every: int = 3, fps: int = 30) -> tuple[float, int]:
     """Play one episode, writing frames to `out`. Returns (score, steps)."""
     env = sv.SlimeVolleyEnv()
     env.seed(seed)
     obs = env.reset()
+    # env.reset() does not reset the built-in opponent's RNN state; without
+    # this the same seed would not replay the game evaluate.py scored.
+    env.policy.reset()
+    if hasattr(net, "reset"):
+        net.reset()
     frames, score = [], 0.0
     for step in range(max_steps):
         result = env.step(action_from(net, obs))
@@ -126,16 +137,20 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--winner", default=str(HERE / "runs" / "run" / "champion.pkl"))
     ap.add_argument("--config", default=str(HERE / "neat_config.ini"))
-    ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--max-steps", type=int, default=1400)
+    ap.add_argument("--seed", type=int, default=1_000_000,
+                    help="episode seed (>= 1_000_000 are held-out, never trained on)")
+    ap.add_argument("--max-steps", type=int, default=3000)
     ap.add_argument("--every", type=int, default=3, help="keep 1 frame in N")
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--out", default="champion.gif")
     args = ap.parse_args()
 
+    run_config = Path(args.winner).parent / "config.ini"
+    config_path = run_config if run_config.exists() else Path(args.config)
+    print(f"config: {config_path}")
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         args.config)
+                         str(config_path))
     with open(args.winner, "rb") as fh:
         blob = pickle.load(fh)
     genome = blob["genome"] if isinstance(blob, dict) else blob
