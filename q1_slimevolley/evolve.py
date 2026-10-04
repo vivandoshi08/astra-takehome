@@ -123,6 +123,17 @@ def _eval_one(job: tuple[bytes, list[int]]) -> list[dict]:
         _W["budget"].flush()
 
 
+def play_all(pool, genomes, seeds: list[int]) -> list[list[dict]]:
+    """Every genome on every seed, one episode per job so the load spreads
+    evenly over workers (a 20-episode validation job per genome used to pile
+    onto 3 workers and hit their step caps early). Episodes are independent
+    and seeded, so splitting changes nothing about the results."""
+    blobs = [pickle.dumps(g) for g in genomes]
+    flat = pool.map(_eval_one, [(b, [s]) for b in blobs for s in seeds], chunksize=1)
+    n = len(seeds)
+    return [[ep for job in flat[i * n:(i + 1) * n] for ep in job] for i in range(len(genomes))]
+
+
 class BudgetReached(Exception):
     """Signals the driver to stop evolving."""
 
@@ -214,10 +225,10 @@ class RunRecorder(neat.reporting.BaseReporter):
         # Stop at a generation boundary rather than letting a worker hit its cap
         # mid-generation, which throws the whole partial generation away.
         # Workers don't share load perfectly, so also check the busiest worker
-        # against its own cap (assume it could take twice its fair share).
+        # against its own cap (allowing it 1.5x its fair share of a generation).
         busiest = max(per_pid_steps(self.budget_log).values(), default=0)
         if (spent + gen_steps > self.limit
-                or busiest + 2 * gen_steps / self.workers > self.per_process_cap):
+                or busiest + 1.5 * gen_steps / self.workers > self.per_process_cap):
             print("  [budget] another generation would not fit — stopping", flush=True)
             raise BudgetReached
 
@@ -311,8 +322,7 @@ def main() -> int:
     def evaluate(genomes, cfg):
         nonlocal generation
         seeds = train_seeds(args.seed, generation, args.episodes)
-        # chunksize=1: hand out genomes one at a time so workers stay balanced.
-        results = pool.map(_eval_one, [(pickle.dumps(g), seeds) for _, g in genomes], chunksize=1)
+        results = play_all(pool, [g for _, g in genomes], seeds)
         recorder.episodes = {}
         for (_, genome), eps in zip(genomes, results):
             genome.fitness = statistics.mean(
@@ -320,7 +330,7 @@ def main() -> int:
             recorder.episodes[genome.key] = eps
 
         top = sorted((g for _, g in genomes), key=lambda g: g.fitness, reverse=True)[:args.val_top]
-        val_results = pool.map(_eval_one, [(pickle.dumps(g), vseeds) for g in top], chunksize=1)
+        val_results = play_all(pool, top, vseeds)
         recorder.validated = []
         for genome, eps in zip(top, val_results):
             val_mean = statistics.mean(e["score"] for e in eps)
