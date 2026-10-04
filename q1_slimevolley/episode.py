@@ -23,6 +23,10 @@ def play_episode(net, env) -> float:
     this, and so will anything else you write.
     """
     obs = env.reset()
+    # env.reset() resets the game but not the built-in opponent, which is an
+    # RNN: its hidden state would carry over from the previous episode, so the
+    # same env seed would not replay the same game. Reset it explicitly.
+    env.policy.reset()
     total = 0.0
     done = False
     while not done:
