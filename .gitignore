@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.DS_Store
+.idea/
+.vscode/
+
+# Your API key. Never commit this.
+.env
+
+# Large run artifacts — but DO commit the logs listed in QUESTIONS.md
+# (fitness_history.csv, budget_log.jsonl, token_log.jsonl, run_log.jsonl).
+*.pkl.bak
+checkpoints/
+
+# The submission tarball itself
+astra_submission_*.tar.gz

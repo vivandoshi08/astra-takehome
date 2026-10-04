@@ -1,0 +1,15 @@
+# ASTRA take-home — Python >= 3.10; verified on 3.11
+#
+# Everything here runs on a laptop CPU. No GPU is needed for any question.
+# If `pip install -r requirements.txt` fails, tell us — that's our bug, not yours.
+
+gymnasium>=1.0,<2
+numpy>=1.26
+opencv-python-headless>=4.8   # slimevolley.py imports cv2 at module level
+neat-python==2.0.*
+matplotlib>=3.7
+pillow>=9.2            # q1_slimevolley/replay.py writes the GIF
+
+# Q3 only. The loop talks to OpenRouter through the OpenAI-compatible client;
+# we send you a key. See q3_v3/README.md.
+openai>=1.0
