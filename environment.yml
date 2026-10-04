@@ -1,0 +1,11 @@
+# conda env for the take-home (README's venv steps, done with conda).
+#   conda env create -f environment.yml && conda activate astra
+#   bash sanity_check.sh
+name: astra
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - -r requirements.lock.txt
