@@ -28,6 +28,7 @@ import neat
 from PIL import Image, ImageDraw, ImageFont
 
 import slimevolley as sv
+from episode import action_from_outputs
 from evolve import make_net
 
 HERE = Path(__file__).parent
@@ -52,8 +53,7 @@ except TypeError:            # Pillow < 10.1 has no size argument
 
 def action_from(net, obs) -> list[int]:
     """Network outputs -> a MultiBinary(3) action. Edit to match your own."""
-    out = net.activate(obs)
-    return [1 if o > 0.5 else 0 for o in out]
+    return action_from_outputs(net.activate(obs))
 
 
 def _px(wx: float, wy: float) -> tuple[float, float]:

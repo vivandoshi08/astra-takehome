@@ -22,4 +22,19 @@ def play_episode(net, env) -> float:
     Return the episode's total reward. Keep the signature — `evolve.py` calls
     this, and so will anything else you write.
     """
-    raise NotImplementedError("implement play_episode()")
+    obs = env.reset()
+    total = 0.0
+    done = False
+    while not done:
+        obs, reward, done, _ = env.step(action_from_outputs(net.activate(obs)))
+        total += reward
+    return total
+
+
+def action_from_outputs(out) -> list[int]:
+    """Three outputs -> MultiBinary(3) [forward, backward, jump].
+
+    Thresholded at 0.5, the midpoint of the default sigmoid output. Must stay in
+    sync with `replay.action_from()`.
+    """
+    return [1 if o > 0.5 else 0 for o in out]
