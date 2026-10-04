@@ -1,0 +1,49 @@
+{
+  "argv": [
+    "evolve.py",
+    "--budget",
+    "5000000",
+    "--seed",
+    "1",
+    "--run-id",
+    "sample_s1"
+  ],
+  "args": {
+    "generations": 100000,
+    "budget": 5000000,
+    "workers": 9,
+    "config": "/Users/vivandoshi/Documents/astra-takehome 3/q1_slimevolley/neat_config.ini",
+    "run_id": "sample_s1",
+    "seed": 1,
+    "episodes": 5,
+    "val_top": 3,
+    "val_episodes": 20
+  },
+  "git_commit": "9aff79f7aa4b2f00baddec333e2e6087cc5b4749-dirty",
+  "start_time": "2026-10-04T16:43:55",
+  "python": "3.11.17",
+  "neat_version": "2.0.0",
+  "seed_ranges": {
+    "train": [
+      0,
+      1000000
+    ],
+    "heldout_start": 1000000,
+    "val": [
+      2000000,
+      2000020
+    ]
+  },
+  "end_time": "2026-10-04T16:44:13",
+  "generations_completed": 20,
+  "steps_used": 4784972,
+  "stopped_early": true,
+  "champion": {
+    "key": 197,
+    "generation": 3,
+    "train_fitness": -4.8,
+    "val_mean": -4.7,
+    "nodes": 4,
+    "conns": 35
+  }
+}
