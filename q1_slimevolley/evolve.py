@@ -21,6 +21,12 @@ correlates with score. With B < 1 a point always outweighs any amount of
 survival. The champion is still chosen on raw validation score, and every
 reported number is raw score.
 
+--return-bonus R adds R per *return* (our contact after which the ball reaches
+the opponent's half) to each episode's selection fitness. Survival alone was
+too weak (~0.7% of fitness variance) and raw contacts don't track score
+(r = 0.05; a genome can juggle on its own side and still lose 5-0), whereas
+returning the ball is the thing that has to happen before any point is won.
+
 Writes to runs/<run-id>/ — see LOGS.md for every file and column.
 """
 
@@ -137,6 +143,12 @@ def _eval_one(job: tuple[bytes, list[int]]) -> list[dict]:
         return play_seeds(net, _W["env"], seeds)
     finally:
         _W["budget"].flush()
+
+
+def selection_fitness(ep: dict, args) -> float:
+    """Per-episode fitness used for selection only (raw score + shaping)."""
+    return (ep["score"] + args.survival_bonus * ep["steps"] / 3000
+            + args.return_bonus * ep["returns"])
 
 
 def play_all(pool, genomes, seeds: list[int]) -> list[list[dict]]:
@@ -327,8 +339,12 @@ def main() -> int:
     ap.add_argument("--val-episodes", type=int, default=20,
                     help="fixed validation seeds used to pick the champion")
     ap.add_argument("--survival-bonus", type=float, default=0.0,
-                    help="selection fitness per episode = score + B * steps/3000 (B < 1)")
+                    help="selection fitness per episode += B * steps/3000 (B < 1)")
+    ap.add_argument("--return-bonus", type=float, default=0.0,
+                    help="selection fitness per episode += R * returns")
     args = ap.parse_args()
+    if args.return_bonus < 0:
+        ap.error("--return-bonus must be >= 0")
     if not 0 <= args.survival_bonus < 1:
         ap.error("--survival-bonus must be in [0, 1) so a point always outweighs survival")
 
@@ -371,8 +387,7 @@ def main() -> int:
         results = play_all(pool, [g for _, g in genomes], seeds)
         recorder.episodes = {}
         for (_, genome), eps in zip(genomes, results):
-            genome.fitness = statistics.mean(
-                e["score"] + args.survival_bonus * e["steps"] / 3000 for e in eps)
+            genome.fitness = statistics.mean(selection_fitness(e, args) for e in eps)
             recorder.episodes[genome.key] = eps
 
         top = sorted((g for _, g in genomes), key=lambda g: g.fitness, reverse=True)[:args.val_top]
