@@ -3,6 +3,7 @@
 Usage:
     python evolve.py --generations 50
     python evolve.py --budget 2000000 --generations 20 --workers 4
+    python evolve.py --episodes 5 --seed 0 --run-id best   # fitness = mean of 5 seeded episodes
 
 Writes to runs/<run-id>/:
     fitness_history.csv   generation, best fitness, mean fitness
@@ -18,6 +19,7 @@ import csv
 import multiprocessing as mp
 import os
 import pickle
+import random
 import statistics
 import sys
 from pathlib import Path
@@ -31,6 +33,7 @@ from budget import BudgetExhausted, BudgetedEnv, StepBudget, total_steps  # noqa
 from episode import play_episode  # noqa: E402
 
 HERE = Path(__file__).parent
+TRAIN_SEED_LIMIT = 1_000_000  # training episode seeds are drawn below this
 _W: dict = {}
 
 
@@ -58,19 +61,36 @@ def make_net(genome, config):
     return neat.nn.RecurrentNetwork.create(genome, config)
 
 
-def _eval_one(genome_bytes: bytes) -> float:
-    """Fitness for one genome: the score from a single episode."""
+def train_seeds(run_seed: int, generation: int, n: int) -> list[int]:
+    """Episode seeds for one generation, shared by every genome in it.
+
+    Sharing seeds within a generation means genomes are compared on the same
+    serves (less selection noise); drawing fresh ones each generation stops the
+    population overfitting a fixed set. All are < TRAIN_SEED_LIMIT, so seeds at
+    or above it are never seen in training and can serve as held-out seeds.
+    """
+    rng = random.Random(f"{run_seed}:{generation}")
+    return [rng.randrange(TRAIN_SEED_LIMIT) for _ in range(n)]
+
+
+def _eval_one(job: tuple[bytes, list[int]]) -> float:
+    """Fitness for one genome: mean score over the given seeded episodes."""
+    genome_bytes, seeds = job
     genome = pickle.loads(genome_bytes)
     net = make_net(genome, _W["config"])
-    if hasattr(net, "reset"):
-        net.reset()  # recurrent nets carry state; clear it before each episode
+    env = _W["env"]
+    scores = []
     try:
-        fitness = play_episode(net, _W["env"])
+        for seed in seeds:
+            env.seed(seed)
+            if hasattr(net, "reset"):
+                net.reset()  # recurrent nets carry state; clear it before each episode
+            scores.append(play_episode(net, env))
     except BudgetExhausted:
         _W["budget"].flush()
         raise
     _W["budget"].flush()
-    return fitness
+    return statistics.mean(scores)
 
 
 class BudgetReached(Exception):
@@ -118,6 +138,8 @@ def main() -> int:
     ap.add_argument("--config", default=str(HERE / "neat_config.ini"))
     ap.add_argument("--run-id", default="run")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--episodes", type=int, default=5,
+                    help="seeded episodes per genome per generation; fitness is their mean")
     args = ap.parse_args()
 
     run_dir = HERE / "runs" / args.run_id
@@ -146,8 +168,13 @@ def main() -> int:
         initargs=(str(run_dir), args.config, per_process_cap),
     )
 
+    generation = 0
+
     def evaluate(genomes, cfg):
-        payload = [pickle.dumps(g) for _, g in genomes]
+        nonlocal generation
+        seeds = train_seeds(args.seed, generation, args.episodes)
+        generation += 1
+        payload = [(pickle.dumps(g), seeds) for _, g in genomes]
         results = pool.map(_eval_one, payload)
         for (_, genome), fitness in zip(genomes, results):
             genome.fitness = fitness
