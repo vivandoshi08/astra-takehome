@@ -21,7 +21,8 @@ mean_returns, best_raw_contacts, mean_cancel, mean_sat, gen_seconds`.
 
 `fitness` / `best_fitness` / `mean_fitness` are the *selection* fitness: with
 `--survival-bonus B` (in run_args) each episode counts `score + B*steps/3000`, so
-`fitness == mean(score + B*steps/3000 + R*returns)` with `--return-bonus R`. `raw_fitness` / `best_raw` / `mean_raw` are
+`fitness == mean(score + B*steps/3000 + R*min(returns, C))` with `--return-bonus R`,
+`--return-cap C` (B + R*C < 1 is enforced, so a point outweighs all shaping). `raw_fitness` / `best_raw` / `mean_raw` are
 plain mean game score. Validation and champion selection always use raw score.
 
 Seed ranges (disjoint by construction):

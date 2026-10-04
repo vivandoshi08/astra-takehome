@@ -22,7 +22,11 @@ survival. The champion is still chosen on raw validation score, and every
 reported number is raw score.
 
 --return-bonus R adds R per *return* (our contact after which the ball reaches
-the opponent's half) to each episode's selection fitness. Survival alone was
+the opponent's half), counting at most --return-cap returns per episode, to
+each episode's selection fitness. The cap matters: winning points ends the
+game sooner, so an uncapped bonus would pay a 0-0 rally to the time limit
+more than a quick 5-0 win. B + R*cap must be < 1 so one point always
+outweighs all shaping combined. Survival alone was
 too weak (~0.7% of fitness variance) and raw contacts don't track score
 (r = 0.05; a genome can juggle on its own side and still lose 5-0), whereas
 returning the ball is the thing that has to happen before any point is won.
@@ -148,7 +152,7 @@ def _eval_one(job: tuple[bytes, list[int]]) -> list[dict]:
 def selection_fitness(ep: dict, args) -> float:
     """Per-episode fitness used for selection only (raw score + shaping)."""
     return (ep["score"] + args.survival_bonus * ep["steps"] / 3000
-            + args.return_bonus * ep["returns"])
+            + args.return_bonus * min(ep["returns"], args.return_cap))
 
 
 def play_all(pool, genomes, seeds: list[int]) -> list[list[dict]]:
@@ -341,10 +345,14 @@ def main() -> int:
     ap.add_argument("--survival-bonus", type=float, default=0.0,
                     help="selection fitness per episode += B * steps/3000 (B < 1)")
     ap.add_argument("--return-bonus", type=float, default=0.0,
-                    help="selection fitness per episode += R * returns")
+                    help="selection fitness per episode += R * min(returns, cap)")
+    ap.add_argument("--return-cap", type=int, default=9,
+                    help="returns per episode that earn the bonus")
     args = ap.parse_args()
-    if args.return_bonus < 0:
-        ap.error("--return-bonus must be >= 0")
+    if args.return_bonus < 0 or args.return_cap < 0:
+        ap.error("--return-bonus and --return-cap must be >= 0")
+    if args.survival_bonus + args.return_bonus * args.return_cap >= 1:
+        ap.error("survival bonus + return bonus * cap must be < 1: a point must outweigh all shaping")
     if not 0 <= args.survival_bonus < 1:
         ap.error("--survival-bonus must be in [0, 1) so a point always outweighs survival")
 
