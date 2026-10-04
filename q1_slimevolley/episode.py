@@ -8,6 +8,27 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
+import slimevolley
+
+# --- Ball-contact counting -------------------------------------------------
+# The env doesn't report contacts, and they are the earliest sign of learning
+# (an agent has to touch the ball long before it wins points). We wrap
+# Particle.bounce: the original runs unchanged, we only count when the "other
+# ball" is an agent (dir +1 = our agent on the right, -1 = the opponent).
+# Physics is untouched — see the trajectory-equality check in the commit log.
+_CONTACTS = {1: 0, -1: 0}
+_bounce = slimevolley.Particle.bounce
+
+
+def _counting_bounce(self, p):
+    side = getattr(p, "dir", 0)
+    if side in _CONTACTS:
+        _CONTACTS[side] += 1
+    return _bounce(self, p)
+
+
+slimevolley.Particle.bounce = _counting_bounce
+
 
 @dataclass
 class EpisodeStats:
@@ -21,6 +42,11 @@ class EpisodeStats:
     act_back: int
     act_jump: int
     act_idle: int         # steps with no button pressed
+    act_both: int         # steps with forward AND backward (they cancel: no move)
+    out_sat: int          # output values < 0.02 or > 0.98 (3 per step)
+    contacts: int         # times the ball bounced off our agent
+    opp_contacts: int     # times it bounced off the opponent
+    returns: int          # our contacts after which the ball reached the opponent's side
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -51,11 +77,25 @@ def run_episode(net, env) -> EpisodeStats:
     # RNN: its hidden state would carry over from the previous episode, so the
     # same env seed would not replay the same game. Reset it explicitly.
     env.policy.reset()
-    s = EpisodeStats(0.0, 0, 0, 0, 0, 0, 0, 0)
+    s = EpisodeStats(0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    pending_return = False  # we touched the ball; has it crossed the net yet?
     done = False
     while not done:
-        action = action_from_outputs(net.activate(obs))
+        out = net.activate(obs)
+        action = action_from_outputs(out)
+        before = _CONTACTS[1], _CONTACTS[-1]
         obs, reward, done, _ = env.step(action)
+        touched = _CONTACTS[1] - before[0]
+        s.contacts += touched
+        s.opp_contacts += _CONTACTS[-1] - before[1]
+        if touched:
+            pending_return = True
+        elif pending_return and (env.game.ball.x < 0 or reward):
+            # crossed to the opponent's half (world x < 0), or the point ended
+            # with the ball on their side (reward > 0)
+            s.returns += env.game.ball.x < 0 or reward > 0
+            pending_return = False
+        s.out_sat += sum(o < 0.02 or o > 0.98 for o in out)
         s.score += reward
         s.steps += 1
         s.points_for += reward > 0
@@ -64,6 +104,7 @@ def run_episode(net, env) -> EpisodeStats:
         s.act_back += action[1]
         s.act_jump += action[2]
         s.act_idle += not any(action)
+        s.act_both += action[0] and action[1]
     return s
 
 

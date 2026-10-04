@@ -93,7 +93,11 @@ def main() -> int:
     s["points_for"] = sum(e["points_for"] for e in episodes)
     s["points_against"] = sum(e["points_against"] for e in episodes)
     s["action_frac"] = {k: sum(e[k] for e in episodes) / total
-                        for k in ("act_fwd", "act_back", "act_jump", "act_idle")}
+                        for k in ("act_fwd", "act_back", "act_jump", "act_idle", "act_both")}
+    s["contacts_per_ep"] = statistics.mean(e["contacts"] for e in episodes)
+    s["returns_per_ep"] = statistics.mean(e["returns"] for e in episodes)
+    s["opp_contacts_per_ep"] = statistics.mean(e["opp_contacts"] for e in episodes)
+    s["out_sat"] = sum(e["out_sat"] for e in episodes) / (3 * total)
     s["score_counts"] = {str(v): scores.count(v) for v in sorted(set(scores))}
     print(f"{s['n']} held-out episodes (seeds {seeds[0]}..{seeds[-1]})")
     print(f"  mean {s['mean']:+.3f}  sd {s['sd']:.3f}")
@@ -102,6 +106,8 @@ def main() -> int:
     print(f"  W/D/L {s['wins']}/{s['draws']}/{s['losses']}   score counts {s['score_counts']}")
     print(f"  points won {s['points_for']}  lost {s['points_against']}")
     print(f"  episode length mean {s['mean_steps']:.0f}  timeouts (3000 steps) {s['timeouts']}")
+    print(f"  per episode: contacts {s['contacts_per_ep']:.2f}  returns {s['returns_per_ep']:.2f}"
+          f"  opponent contacts {s['opp_contacts_per_ep']:.2f}  | outputs saturated {s['out_sat']:.2f}")
     print("  action fractions " + "  ".join(f"{k[4:]} {v:.2f}" for k, v in s["action_frac"].items()))
     if args.out:
         Path(args.out).write_text(json.dumps(

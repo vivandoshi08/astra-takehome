@@ -61,7 +61,23 @@ HISTORY_COLUMNS = [
     "best_nodes", "best_conns", "mean_ep_steps", "timeout_frac",
     "gen_steps", "cum_steps", "val_best", "champion_val",
     "best_raw", "mean_raw",
+    "mean_nodes", "mean_conns", "mean_contacts", "mean_returns",
+    "best_raw_contacts", "mean_cancel", "mean_sat", "gen_seconds",
 ]
+ACT_KEYS = ("act_fwd", "act_back", "act_jump", "act_idle", "act_both")
+
+
+def episode_summary(eps: list[dict]) -> dict:
+    """Per-genome aggregates of run_episode stats (LOGS.md)."""
+    n_steps = sum(e["steps"] for e in eps)
+    return {
+        "timeouts": sum(e["steps"] >= 3000 for e in eps),
+        **{k: sum(e[k] for e in eps) / n_steps for k in ACT_KEYS},
+        "out_sat": sum(e["out_sat"] for e in eps) / (3 * n_steps),
+        "contacts": [e["contacts"] for e in eps],
+        "opp_contacts": [e["opp_contacts"] for e in eps],
+        "returns": [e["returns"] for e in eps],
+    }
 
 
 def _init_worker(run_dir: str, config_path: str, per_process_cap: int) -> None:
@@ -154,6 +170,7 @@ class RunRecorder(neat.reporting.BaseReporter):
         self.champion_meta: dict = {"val_mean": float("-inf")}
         self._gen = 0
         self._last_steps = 0
+        self._last_time = time.time()
         for name in ("genomes.jsonl", "validation.jsonl"):
             (run_dir / name).unlink(missing_ok=True)
 
@@ -177,7 +194,6 @@ class RunRecorder(neat.reporting.BaseReporter):
             for g in genomes:
                 eps = self.episodes[g.key]
                 nodes, conns = g.size()
-                n_steps = sum(e["steps"] for e in eps)
                 fh.write(json.dumps({
                     "gen": gen, "key": g.key,
                     "species": species.get_species_id(g.key),
@@ -187,9 +203,7 @@ class RunRecorder(neat.reporting.BaseReporter):
                     "steps": [e["steps"] for e in eps],
                     "points_for": [e["points_for"] for e in eps],
                     "points_against": [e["points_against"] for e in eps],
-                    "timeouts": sum(e["steps"] >= 3000 for e in eps),
-                    **{k: sum(e[k] for e in eps) / n_steps
-                       for k in ("act_fwd", "act_back", "act_jump", "act_idle")},
+                    **episode_summary(eps),
                 }) + "\n")
         with (self.run_dir / "validation.jsonl").open("a") as fh:
             for row in self.validated:
@@ -201,6 +215,10 @@ class RunRecorder(neat.reporting.BaseReporter):
         gen_steps = spent - self._last_steps
         self._last_steps = spent
         nodes, conns = best_genome.size()
+        sizes = [g.size() for g in genomes]
+        best_raw_g = genomes[max(range(len(genomes)), key=raw.__getitem__)]
+        all_steps = sum(e["steps"] for e in all_eps)
+        now = time.time()
         self.history.append([
             gen, max(fits), statistics.mean(fits),
             statistics.median(fits), statistics.pstdev(fits), min(fits),
@@ -211,7 +229,15 @@ class RunRecorder(neat.reporting.BaseReporter):
             max(r["val_mean"] for r in self.validated),
             self.champion_meta["val_mean"],
             max(raw), statistics.mean(raw),
+            statistics.mean(n for n, _ in sizes), statistics.mean(c for _, c in sizes),
+            statistics.mean(e["contacts"] for e in all_eps),
+            statistics.mean(e["returns"] for e in all_eps),
+            statistics.mean(e["contacts"] for e in self.episodes[best_raw_g.key]),
+            sum(e["act_both"] for e in all_eps) / all_steps,
+            sum(e["out_sat"] for e in all_eps) / (3 * all_steps),
+            round(now - self._last_time, 2),
         ])
+        self._last_time = now
         self.write_outputs()
         self._gen += 1
 
@@ -221,6 +247,9 @@ class RunRecorder(neat.reporting.BaseReporter):
               f" | val best {h['val_best']:+.2f} champion {h['champion_val']:+.2f}"
               f" | species {h['n_species']} | best size {nodes}n/{conns}c"
               f" | ep len {h['mean_ep_steps']:.0f} timeouts {h['timeout_frac']:.0%}", flush=True)
+        print(f"           contacts/ep {h['mean_contacts']:.2f} returns/ep {h['mean_returns']:.2f}"
+              f" | cancel {h['mean_cancel']:.2f} saturated {h['mean_sat']:.2f}"
+              f" | pop size {h['mean_nodes']:.1f}n/{h['mean_conns']:.1f}c | {h['gen_seconds']:.1f}s", flush=True)
         print(f"  [budget] {spent:,} / {self.limit:,} steps (+{gen_steps:,} this gen)", flush=True)
         # Stop at a generation boundary rather than letting a worker hit its cap
         # mid-generation, which throws the whole partial generation away.
@@ -242,6 +271,21 @@ class RunRecorder(neat.reporting.BaseReporter):
             with (self.run_dir / "champion.pkl").open("wb") as fh:
                 pickle.dump(self.champion, fh)
             (self.run_dir / "champion.json").write_text(json.dumps(self.champion_meta, indent=2))
+
+
+class Tee:
+    """Write to the console and a log file at once."""
+
+    def __init__(self, stream, path: Path):
+        self.stream, self.file = stream, path.open("a")
+
+    def write(self, text):
+        self.stream.write(text)
+        self.file.write(text)
+
+    def flush(self):
+        self.stream.flush()
+        self.file.flush()
 
 
 def per_pid_steps(budget_log: Path) -> dict[int, int]:
@@ -292,6 +336,7 @@ def main() -> int:
     if (run_dir / "budget_log.jsonl").exists():
         sys.exit(f"{run_dir} already has a budget log; pick a new --run-id")
     run_dir.mkdir(parents=True, exist_ok=True)
+    sys.stdout = Tee(sys.stdout, run_dir / "stdout.log")  # keep NEAT's own report too
     shutil.copy(args.config, run_dir / "config.ini")
     config_path = run_dir / "config.ini"
     run_info = {
@@ -300,6 +345,7 @@ def main() -> int:
         "neat_version": getattr(neat, "__version__", "unknown"),
         "seed_ranges": {"train": [0, TRAIN_SEED_LIMIT],
                         "heldout_start": HELDOUT_SEED_START,
+                        "heldout": [HELDOUT_SEED_START, VAL_SEED_START],
                         "val": [VAL_SEED_START, VAL_SEED_START + args.val_episodes]},
     }
     (run_dir / "run_args.json").write_text(json.dumps(run_info, indent=2))
@@ -337,6 +383,7 @@ def main() -> int:
             recorder.validated.append({
                 "key": genome.key, "train_fitness": genome.fitness, "val_mean": val_mean,
                 "val_scores": [e["score"] for e in eps], "val_steps": [e["steps"] for e in eps],
+                **{f"val_{k}": v for k, v in episode_summary(eps).items()},
             })
             recorder.consider(genome, val_mean, generation)
         generation += 1
