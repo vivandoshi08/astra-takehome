@@ -1,7 +1,7 @@
 """Evolve a classifier for one of the 2-D problems with backprop-NEAT.
 
-    python main.py --dataset spiral --steps 10 --strategy lamarckian --lr 0.1
-    python main.py --dataset spiral --allocation halving --strategy baldwinian --lr 0.1
+    python main.py --dataset spiral --steps 10 --strategy lamarckian --lr 0.3
+    python main.py --dataset spiral --allocation halving --strategy baldwinian --lr 0.3
     python main.py --dataset spiral --steps 0 --generations 30     # plain NEAT
 
 Every generation, each genome is scored before refinement (forward passes are
@@ -52,8 +52,14 @@ genomes.jsonl rows gain repair_dead / repair_live; without it both files are
 exactly as before.
 
 Refuses to overwrite an existing run unless --overwrite is given.
-Exit codes: 0 ok, 2 usage error, 4 over budget (logs written, run invalid);
-anything else (1 included) is a crash.
+Exit codes: 0 ok, 2 usage error, 4 over budget (logs written, run invalid),
+5 stopped early by neat-python (logs of the generations run are written; the
+run is invalid); anything else (1 included) is a crash.
+
+neat-python reproduces after every evaluation, including the last. If that
+final reproduction fails (e.g. more species than the population can hold),
+every generation and every gradient step is already done, so the run is
+complete and is reported as such (summary.json: neat_error_after_final).
 """
 
 from __future__ import annotations
@@ -85,6 +91,7 @@ from network import (GenomeNetwork, champion_net, complexity,  # noqa: E402
 
 VAL_SEED = 20261004  # fixed: every run and seed shares one validation split
 BUDGET_EXIT = 4      # exit code of an over-budget run (1 is Python's uncaught exception)
+NEAT_STOP_EXIT = 5   # neat-python stopped the run before the last generation
 
 HISTORY_COLUMNS = [
     "generation", "best_fitness", "mean_fitness",          # scaffold
@@ -483,12 +490,27 @@ def main() -> int:
     started = time.time()
     commit = git_commit()
     exhausted = None
+    neat_stop = None          # neat-python failed before the last generation
+    neat_after_final = None   # ... or only in the unused reproduction after it
     try:
         pop.run(evaluator, generations)
     except BudgetExhausted as e:
         # Keep the partial logs, but the run does not count.
         exhausted = str(e)
         print(f"\nBUDGET EXCEEDED — this run is invalid: {e}")
+    except RuntimeError as e:
+        # neat-python raises e.g. "population size 100 is less than
+        # num_species * min_species_size" from reproduction. Before the audit
+        # this was uncaught: the run exited 1 and wrote nothing, even when it
+        # happened after the final generation had been evaluated.
+        if len(evaluator.history) == generations:
+            neat_after_final = str(e)
+            print(f"\nnote: neat-python failed in the reproduction after the final "
+                  f"generation; every generation was evaluated, so the run is complete: {e}")
+        else:
+            neat_stop = str(e)
+            print(f"\nSTOPPED BY NEAT-PYTHON after {len(evaluator.history)} of "
+                  f"{generations} generations — this run is invalid: {e}")
     finally:
         if genome_log is not None:
             genome_log.close()
@@ -512,6 +534,9 @@ def main() -> int:
         "budget_refinements": budget.refinements,
         "within_budget": exhausted is None and budget.spent <= budget.limit,
         "budget_error": exhausted,
+        "completed": exhausted is None and neat_stop is None,
+        "neat_error": neat_stop,
+        "neat_error_after_final": neat_after_final,
         "refine_calls": evaluator.refine_calls,
         "genomes_refined": evaluator.genomes_refined,
         "n_fit": len(X_fit),
@@ -572,7 +597,9 @@ def main() -> int:
     with (run_dir / "summary.json").open("w") as fh:
         json.dump(summary, fh, indent=2)
     print(f"wrote {run_dir}/")
-    return BUDGET_EXIT if exhausted else 0
+    if exhausted:
+        return BUDGET_EXIT
+    return NEAT_STOP_EXIT if neat_stop else 0
 
 
 if __name__ == "__main__":

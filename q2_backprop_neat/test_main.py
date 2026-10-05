@@ -212,6 +212,38 @@ def test_budget_and_determinism(tmp):
           r.returncode == driver.BUDGET_EXIT and s and not s["within_budget"]
           and (out / "fitness_history.csv").exists() and "WARNING" in r.stdout,
           s and s["budget"])
+    # neat-python failing in the reproduction after the final generation: the
+    # run is complete (found by the post-merge audit: this case used to exit 1
+    # and write nothing). Lamarckian halving, spiral3, seed 0 hits it.
+    r, s, _, _ = run(tmp, "after_final", "--dataset", "spiral3", "--allocation", "halving",
+                     "--strategy", "lamarckian", "--lr", "0.3", "--seed", "0")
+    check("a neat failure after the final generation is a completed run",
+          r.returncode == 0 and s and s["completed"] and s["generations_run"] == 30
+          and s["neat_error_after_final"] and s["heldout_acc"] > 0,
+          s and (s["generations_run"], round(s["heldout_acc"], 3)))
+    # ... and one before the last generation stops the run: logs written, exit 5.
+    code = (
+        "import sys, neat\n"
+        f"sys.path.insert(0, {str(HERE)!r})\n"
+        "orig = neat.DefaultReproduction.reproduce\n"
+        "calls = [0]\n"
+        "def failing(self, *a, **k):\n"
+        "    calls[0] += 1\n"
+        "    if calls[0] == 3:\n"
+        "        raise RuntimeError('simulated neat failure')\n"
+        "    return orig(self, *a, **k)\n"
+        "neat.DefaultReproduction.reproduce = failing\n"
+        f"sys.argv = ['main.py', '--quiet', '--dataset', 'xor', '--steps', '5', '--generations', '6',"
+        f" '--strategy', 'baldwinian', '--lr', '0.3', '--run-id', {str(Path(tmp) / 'early_stop')!r}]\n"
+        "import main\n"
+        "raise SystemExit(main.main())\n")
+    r = subprocess.run([PY, "-c", code], capture_output=True, text=True)
+    se = json.loads((Path(tmp) / "early_stop" / "summary.json").read_text())
+    rows = (Path(tmp) / "early_stop" / "fitness_history.csv").read_text().strip().splitlines()
+    check("a neat failure before the last generation exits 5 with partial logs",
+          r.returncode == driver.NEAT_STOP_EXIT and not se["completed"] and se["neat_error"]
+          and len(rows) == 1 + 3, (r.returncode, len(rows) - 1))
+
     a = run(tmp, "det_a", "--dataset", "spiral3", "--steps", "10", "--generations", "4",
             "--strategy", "lamarckian", "--lr", LR)
     b = run(tmp, "det_b", "--dataset", "spiral3", "--steps", "10", "--generations", "4",
