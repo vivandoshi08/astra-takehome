@@ -21,6 +21,16 @@ any refinement code are in `AUDIT.md`; this file starts after that.
 
 ## Surprises to investigate
 
+- **The write-up's multiplicative penalty has a degenerate optimum.** With
+  fitness 1 − (1 − acc)(1 + λ√C), a network with no enabled connections pays
+  no penalty at all (√0 = 0) and scores its constant-guess accuracy. At
+  λ = 1 every champion, both strategies, all datasets, all 10 seeds, had 0
+  connections and predicted one class (held-out 0.487 / 0.480 / 0.433 —
+  below the majority floor, because the training majority is the held-out
+  minority). Found when FP5 could not be scored (ratio 0.00 everywhere).
+  The linear form has no such cliff: C = 0 still costs nothing, but a
+  useful connection is always worth its fixed price.
+
 - **Lamarckian runs fragment into many species; 4 of 9 Lamarckian
   successive-halving runs crashed.** neat-python raised `RuntimeError:
   population size 100 is less than num_species * min_species_size 102
@@ -48,6 +58,13 @@ any refinement code are in `AUDIT.md`; this file starts after that.
   pass the collapsed weights on.
 
 ## Process
+
+- The frontier grid's 480 runs read `-dirty` on 145 cells: the parallel
+  figures agent was writing untracked files under `q2_backprop_neat/`
+  (git's dirty check counts untracked files). The harness's per-run code
+  fingerprint (sha256 over .py/.ini outside runs/ and experiments/) was
+  identical before and after every one of the 480 runs, so no code changed;
+  the stamp, not the results, was affected.
 
 - A parallel Q1 session committed onto `q2-backprop-neat` through the shared
   working directory (reflog shows its checkout and commit). Harmless here —
