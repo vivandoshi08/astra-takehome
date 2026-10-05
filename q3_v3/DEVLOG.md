@@ -108,3 +108,25 @@ loop. Each fix has a check in `tests/test_loop_fixes.py` (14/14).
 - `runs/mock-smoke` is kept and committed: a run made with the shipped loop
   and shipped `spend.py`, which priced it at $0.02; the fixed `spend.py`
   prices it at $0.00.
+
+## 2026-10-04 — pre-flight: key, prices, probe (predictions first)
+
+**Free checks done before any spend.** The key's own meter (OpenRouter
+`/api/v1/key`, free) reads limit $10, usage $0.00, expires 2026-10-21 — a
+second meter to check `spend.py` against. OpenRouter's model list (free)
+confirms `spend.py`'s rates for Haiku 4.5 ($1/$5 per Mtok), Sonnet 5, Opus 5
+and gpt-4o-mini, and lists **reasoning as supported for Haiku 4.5**, against
+the README's "Haiku 4.5 does not" (AUDIT.md F1). Not yet tested by a call.
+
+**Probe** (`probe_api.py`, mock-tested in a temp copy): two real calls with
+the loop's real generation-0 prompt, logged through `TokenBudget` so
+`spend.py` counts them. Predictions, written before running:
+
+- *default*: ~1,000–1,200 input tokens; 600–1,500 output; `finish_reason`
+  "stop"; a code block that scores better than the SEED (−0.0272), likely
+  −0.012 to −0.020; ≈ $0.004–0.009.
+- *reasoning "low"*: accepted. Reasoning tokens > 0 and billed as output.
+  OpenRouter turns effort into a thinking budget inside `max_tokens`
+  (min ~1,024 of our 2,048), so the answer has ~1,000 tokens left: about
+  even odds it is cut off (`finish_reason` "length", no code).
+- The provider's meter, once settled, matches `spend.py` to within $0.001.
