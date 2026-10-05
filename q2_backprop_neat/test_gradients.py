@@ -23,6 +23,10 @@ Skipped and counted, not hidden: genomes with a relu pre-activation within
 where the reference's clip hides a misclassified point. A component whose
 +-H step moves any point across a kink is flagged and left out.
 
+The evolved-genome checks run twice: on genomes from neat_config.ini and on
+genomes from neat_config_sine.ini, whose hidden nodes also mutate to sin and
+gauss (plain sin(z) and exp(-z^2), no neat-python gains).
+
 Nothing is written to disk.
 """
 
@@ -45,6 +49,7 @@ from network import GenomeNetwork, _act, _act_grad, load_config  # noqa: E402
 from refine import AdamState, RefineResult, refine  # noqa: E402
 
 CONFIG = load_config(HERE / "neat_config.ini")
+SINE_CONFIG_PATH = HERE / "neat_config_sine.ini"
 GC = CONFIG.genome_config
 U = np.finfo(float).eps
 H = 1e-5           # finite-difference step
@@ -197,11 +202,14 @@ def summarise(results):
 
 
 # ---------------------------------------------------------------- genomes
-def collect_genomes(seeds=(0, 1), generations=80, keep=(0, 5, 20, 50, 79), per_gen=10):
+def collect_genomes(seeds=(0, 1), generations=80, keep=(0, 5, 20, 50, 79), per_gen=10,
+                    config_path=None):
     """Copies of genomes from plain NEAT runs (accuracy fitness) on every dataset.
 
     Per kept generation: a strided sample plus the largest genome, so hidden
-    nodes and mixed activations are present.
+    nodes and mixed activations are present. config_path: build a fresh config
+    from it for every run (a shared one carries its node-key counter from run
+    to run); None uses the module's CONFIG, shared, as the original sample did.
     """
     found = []
     for name in DATASETS:
@@ -220,7 +228,8 @@ def collect_genomes(seeds=(0, 1), generations=80, keep=(0, 5, 20, 50, 79), per_g
                         found.append((name, copy.deepcopy(g)))
                 gen += 1
 
-            neat.Population(CONFIG, seed=seed).run(ev, generations)
+            cfg = CONFIG if config_path is None else load_config(config_path)
+            neat.Population(cfg, seed=seed).run(ev, generations)
     return found
 
 
@@ -256,17 +265,46 @@ def test_act_grad():
         err = np.abs(f - _act_grad(name, z)).max()
         check(f"{name}: max |analytic - FD| over z in [-70, 70] and +-1e6",
               err < 1e-8, f"{err:.1e}")
+    # sin and gauss: smooth everywhere but curved at every scale, so a step
+    # relative to |z| (1 at z = 1e6) is far too coarse. Absolute step, and the
+    # step actually taken, (z + h) - z, which is exact in floating point.
+    h = (z + 1e-5) - z
+    for name in ("sin", "gauss"):
+        f = (_act(name, z + h) - _act(name, z - h)) / (2 * h)
+        err = np.abs(f - _act_grad(name, z)).max()
+        check(f"{name}: max |analytic - FD| over z in [-70, 70] and +-1e3, +-1e6",
+              err < 1e-8, f"{err:.1e}")
+    zz = np.linspace(-27, 27, 5401)
+    check("sin is sin(z) and gauss is exp(-z^2) exactly (no gains), gauss is 0 past "
+          "|z| = 27.3 (where exp(-z^2) underflows; its clip at 40 changes no value)",
+          np.array_equal(_act("sin", zz), np.sin(zz))
+          and np.array_equal(_act("gauss", zz), np.exp(-zz ** 2))
+          and np.all(_act("gauss", np.array([-1e6, -40.0, -27.5, 27.5, 40.0, 1e6])) == 0.0))
+    reg = neat.activations.ActivationFunctionSet()
+    check("'sin' and 'gauss' are built into neat-python's activation registry "
+          f"(neat {neat.__version__}), and the sine config offers them",
+          reg.is_valid("sin") and reg.is_valid("gauss")
+          and {"sin", "gauss"} <= set(load_config(SINE_CONFIG_PATH)
+                                      .genome_config.activation_options))
     with np.errstate(over="raise", invalid="raise", divide="raise"):
-        ok = all(np.isfinite(_act_grad(n, np.array([-1e300, 1e300]))).all()
-                 for n in ("sigmoid", "tanh", "relu", "identity"))
-    check("no overflow or NaN at |z| = 1e300", ok)
+        ok = all(np.isfinite(f(n, np.array([-1e300, 1e300]))).all()
+                 for n in ("sigmoid", "tanh", "relu", "identity", "sin", "gauss")
+                 for f in (_act, _act_grad))
+    check("no overflow or NaN at |z| = 1e300 (_act and _act_grad)", ok)
     check("sigmoid derivative is 0 beyond the +-60 clip, relu's is 0 at z = 0",
           _act_grad("sigmoid", np.array([60.5, -61.0])).tolist() == [0.0, 0.0]
           and _act_grad("relu", np.array([0.0]))[0] == 0.0)
 
 
-def test_real_genomes(genomes):
-    print(f"finite differences on {len(genomes)} genomes from NEAT runs, "
+def live_hidden_acts(net):
+    return {net.activations[net._bias_ix[n]] for n in net.eval_order
+            if n not in net.output_keys}
+
+
+def test_real_genomes(genomes, label="", require=()):
+    """require: activations that must appear on a live hidden node of at least
+    one genome whose check ran (status ok), as evolved and after refinement."""
+    print(f"finite differences on {len(genomes)} genomes from NEAT runs{label}, "
           "as evolved and after 300 Adam steps at lr 1.0")
     stats = Counter()
     acts = Counter()
@@ -284,12 +322,21 @@ def test_real_genomes(genomes):
           f"params median {int(np.median(sizes))}, max {max(sizes)}")
 
     results = {"evolved": [], "refined": []}
+    covered = {"evolved": Counter(), "refined": Counter()}
     for name, g in genomes:
         X, y = get_dataset(name)[:2]
         net = GenomeNetwork(g, CONFIG)
+        acts_here = live_hidden_acts(net)
         results["evolved"].append(fd_check(net, X, y))
         refine(net, X, y, 300, 1.0)
         results["refined"].append(fd_check(net, X, y))
+        for stage in ("evolved", "refined"):
+            if results[stage][-1]["status"] == "ok":
+                covered[stage].update(acts_here)
+    for act in require:
+        check(f"{act}: on a live hidden node of genomes checked ok (evolved / refined)",
+              covered["evolved"][act] > 0 and covered["refined"][act] > 0,
+              f"{covered['evolved'][act]} / {covered['refined'][act]} genomes")
 
     for label, res in results.items():
         st, ok, worst = summarise(res)
@@ -340,6 +387,12 @@ def test_edge_cases():
             [(-1, 5, 2.1), (-2, 5, -1.3), (-1, 6, 0.7), (-2, 6, 1.9), (-1, 7, -1.5),
              (-2, 7, 1.1), (-1, 8, 0.6), (-2, 8, -0.9), (5, 7, 1.2), (6, 8, -1.4),
              (5, 0, 1.3), (6, 0, -1.1), (7, 0, 0.9), (8, 0, 1.6), (-1, 0, -0.4)]),
+        "sin and gauss hidden nodes: chained, side by side, with skip connections": build(
+            {0: ("sigmoid", 0.2), 20: ("sin", 0.3), 21: ("gauss", -0.4), 22: ("sin", -0.1),
+             23: ("gauss", 0.5)},
+            [(-1, 20, 2.3), (-2, 20, -1.7), (-1, 21, 1.4), (-2, 21, 0.9), (20, 22, 1.8),
+             (21, 22, -2.2), (20, 23, 0.7), (-2, 23, 1.1), (22, 0, 1.9), (23, 0, -1.6),
+             (21, 0, 0.8), (-1, 0, -0.5)]),
         "large weights: a hidden sigmoid past its +-60 clip on some points": build(
             {0: ("sigmoid", -0.5), 5: ("sigmoid", 30.0), 6: ("tanh", 0.0)},
             [(-1, 5, 30.0), (-2, 5, 30.0), (-2, 6, 25.0), (5, 0, 2.0), (6, 0, -1.5),
@@ -448,7 +501,7 @@ def test_structure(genomes):
     print("structure: dead connections, missing sources, side effects")
     n_dead, n_dead_nonzero, missing, out_missing = 0, 0, 0, 0
     changed, loss_mismatch, ref_gap = 0, 0, 0.0
-    mirror_ratio, mirror_sum = 0.0, 0.0
+    mirror_ratio, mirror_sum, plain_ratio = 0.0, 0.0, 0.0
     for name, g in genomes:
         X, y = get_dataset(name)[:2]
         net = GenomeNetwork(g, CONFIG)
@@ -466,7 +519,13 @@ def test_structure(genomes):
                         and np.array_equal(net.forward(X), p0))
         loss_mismatch += net.loss(X, y) != L
         if np.all((p0 > 1e-12) & (p0 < 1 - 1e-12)):
-            ref_gap = max(ref_gap, abs(L - ref_loss(net, X, y)) / max(L, 1e-300))
+            # Against the mirrored reference (no 1 - p cancellation): to 1e-12.
+            # Against the plain one: to its own round-off, u * kappa, which a
+            # genome with p = 1 - 2e-9 on a y=0 point (sine sample) pushes past
+            # 1e-12 relative although loss() is right.
+            ref_gap = max(ref_gap, abs(L - ref_loss(net, X, y, True)) / max(L, 1e-300))
+            plain_ratio = max(plain_ratio, abs(L - ref_loss(net, X, y))
+                              / (ref_atol(net, X, y) * H / SAFETY))
             # the mirrored reference agrees with the plain one, to the plain one's round-off
             gap = abs(ref_loss(net, X, y, True) - ref_loss(net, X, y))
             mirror_ratio = max(mirror_ratio, gap / (ref_atol(net, X, y) * H / SAFETY))
@@ -479,8 +538,10 @@ def test_structure(genomes):
           f"{missing} such edges (values.get default never fires)")
     check("loss_and_grad changes neither params nor forward()", changed == 0)
     check("loss() equals loss_and_grad()'s loss exactly", loss_mismatch == 0)
-    check("loss() agrees with the forward()-based BCE (unclipped genomes)",
-          ref_gap < 1e-12, f"max relative gap {ref_gap:.1e}")
+    check("loss() agrees with the forward()-based BCE (unclipped genomes): to 1e-12 "
+          "relative with 1 - p from the mirror, within round-off with 1 - p subtracted",
+          ref_gap < 1e-12 and plain_ratio <= 1.0,
+          f"max relative gap {ref_gap:.1e}; plain gap / its round-off bound {plain_ratio:.2f}")
     check("mirrored reference: forward(mirror) = 1 - forward, and its loss agrees with "
           "the plain reference within the plain one's round-off bound",
           mirror_sum < 4 * U and mirror_ratio <= 1.0,
@@ -591,6 +652,25 @@ def test_refine(genomes):
           and np.array_equal(r.params[1:], th[1:]))
 
 
+def test_refine_sine(genomes):
+    print(f"refine (Adam, lr {LR}) on genomes with a live sin or gauss hidden node")
+    for name in DATASETS:
+        X, y = get_dataset(name)[:2]
+        sample = [g for d, g in genomes if d == name
+                  and {"sin", "gauss"} & live_hidden_acts(GenomeNetwork(g, CONFIG))]
+        before, after, worse, flat = [], [], 0, 0
+        for g in sample:
+            r = refine(GenomeNetwork(g, CONFIG), X, y, 50, LR)
+            before.append(r.loss_before)
+            after.append(r.loss_after)
+            worse += r.loss_after > r.loss_before
+            flat += r.loss_after == r.loss_before
+        check(f"{name}: 50 steps lower the training loss on every one of "
+              f"{len(sample)} sin/gauss genomes", len(sample) > 0 and worse == 0 and flat == 0,
+              f"median {np.median(before):.3f} -> {np.median(after):.3f}; "
+              f"increased {worse}, unchanged {flat}" if sample else "none in the sample")
+
+
 def test_refine_resume(genomes):
     print("refine resumed from its state (successive halving: 2, then 4, then 8 steps)")
     rounds = (2, 4, 8)
@@ -679,6 +759,12 @@ def main() -> int:
     test_structure(genomes)
     test_refine(genomes)
     test_refine_resume(genomes)
+
+    sine = collect_genomes(config_path=SINE_CONFIG_PATH)
+    test_real_genomes(sine, " with neat_config_sine.ini (sin, gauss)", require=("sin", "gauss"))
+    test_structure(sine)
+    test_refine_sine(sine)
+
     test_timing(genomes)
     print(f"\n{'all checks passed' if not check.failed else f'{check.failed} FAILED'}")
     return 1 if check.failed else 0

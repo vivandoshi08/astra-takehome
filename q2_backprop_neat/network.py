@@ -29,8 +29,11 @@ Changes from the shipped rig (see audit_scaffold.py for the evidence):
   its fitness (`genome.refined_params`), so a Baldwinian champion is not
   evaluated with the unrefined weights its genome still carries.
 
-Activations here are the plain functions (sigmoid(z), tanh(z)); neat-python's
-own `neat.nn` uses sigmoid(5z) and tanh(2.5z), so never evaluate with `neat.nn`.
+Activations here are the plain functions (sigmoid(z), tanh(z), relu(z), z,
+sin(z), exp(-z^2)); neat-python's own `neat.nn` uses sigmoid(5z), tanh(2.5z),
+sin(5z) and exp(-5z^2), so never evaluate with `neat.nn`. neat-python only
+needs an activation's *name* (mutation picks among `activation_options`);
+'sin' and 'gauss' are both in its built-in registry.
 """
 
 from __future__ import annotations
@@ -42,6 +45,10 @@ import numpy as np
 from neat.graphs import feed_forward_layers
 
 
+# gauss clips its input here before squaring (see _act).
+GAUSS_CLIP = 40.0
+
+
 def _act(name: str, x: np.ndarray) -> np.ndarray:
     if name == "sigmoid":
         return 1.0 / (1.0 + np.exp(-np.clip(x, -60, 60)))
@@ -51,6 +58,13 @@ def _act(name: str, x: np.ndarray) -> np.ndarray:
         return np.maximum(x, 0.0)
     if name == "identity":
         return x
+    if name == "sin":
+        return np.sin(x)
+    if name == "gauss":
+        # Clipped only so x*x cannot overflow: exp(-x^2) is already exactly
+        # 0.0 for |x| > 27.3, so the clip at 40 changes no value.
+        c = np.clip(x, -GAUSS_CLIP, GAUSS_CLIP)
+        return np.exp(-c * c)
     raise ValueError(f"unsupported activation {name!r} — see network.py")
 
 
@@ -59,6 +73,8 @@ def _act_grad(name: str, x: np.ndarray) -> np.ndarray:
 
     sigmoid is flat outside (-60, 60) because _act clips there; relu takes
     subgradient 0 at x <= 0. Written with exp(-|x|) so nothing overflows.
+    gauss: -2x exp(-x^2), with the same clip as _act (the value there is
+    already 0, so no kink is visible).
     """
     if name == "sigmoid":
         e = np.exp(-np.abs(x))
@@ -70,6 +86,11 @@ def _act_grad(name: str, x: np.ndarray) -> np.ndarray:
         return (x > 0).astype(float)
     if name == "identity":
         return np.ones_like(x)
+    if name == "sin":
+        return np.cos(x)
+    if name == "gauss":
+        c = np.clip(x, -GAUSS_CLIP, GAUSS_CLIP)
+        return -2.0 * c * np.exp(-c * c)
     raise ValueError(f"unsupported activation {name!r} — see network.py")
 
 
