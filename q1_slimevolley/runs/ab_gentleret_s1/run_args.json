@@ -1,0 +1,59 @@
+{
+  "argv": [
+    "evolve.py",
+    "--budget",
+    "5000000",
+    "--seed",
+    "1",
+    "--config",
+    "configs/gentle.ini",
+    "--return-bonus",
+    "0.1",
+    "--run-id",
+    "ab_gentleret_s1"
+  ],
+  "args": {
+    "generations": 100000,
+    "budget": 5000000,
+    "workers": 9,
+    "config": "configs/gentle.ini",
+    "run_id": "ab_gentleret_s1",
+    "seed": 1,
+    "episodes": 5,
+    "val_top": 3,
+    "val_episodes": 20,
+    "survival_bonus": 0.0,
+    "return_bonus": 0.1
+  },
+  "git_commit": "b94232276f2b7bbf8a3640820d7715489f525570-dirty",
+  "start_time": "2026-10-04T16:57:37",
+  "python": "3.11.17",
+  "neat_version": "2.0.0",
+  "seed_ranges": {
+    "train": [
+      0,
+      1000000
+    ],
+    "heldout_start": 1000000,
+    "heldout": [
+      1000000,
+      2000000
+    ],
+    "val": [
+      2000000,
+      2000020
+    ]
+  },
+  "end_time": "2026-10-04T16:57:52",
+  "generations_completed": 20,
+  "steps_used": 4676256,
+  "stopped_early": true,
+  "champion": {
+    "key": 1085,
+    "generation": 19,
+    "train_fitness": -4.68,
+    "val_mean": -4.65,
+    "nodes": 4,
+    "conns": 24
+  }
+}

@@ -1,7 +1,13 @@
 """Watch a champion play. Writes an animated GIF you can scrub through.
 
     python replay.py --winner runs/run/champion.pkl --out champion.gif
-    python replay.py --winner runs/run/champion.pkl --seed 4242 --max-steps 1200
+    python replay.py --winner runs/run/champion.pkl --seed 1000042
+
+Defaults: seed 1_000_000 (the first held-out seed; seeds below 1_000_000 are
+training seeds) and 3000 max steps (the episode limit used in training, so the
+score shown is the full-episode score, not a truncated one). The NEAT config is
+read from `config.ini` next to `--winner` when present (the exact copy the run
+used), else from `--config`.
 
 The environment's own `env.render()` does not work: `slimevolley.py` is
 vendored from a project that predates gymnasium and its renderer imports
@@ -28,6 +34,7 @@ import neat
 from PIL import Image, ImageDraw, ImageFont
 
 import slimevolley as sv
+from episode import _CONTACTS, action_from_outputs, net_inputs, run_episode
 from evolve import make_net
 
 HERE = Path(__file__).parent
@@ -52,8 +59,7 @@ except TypeError:            # Pillow < 10.1 has no size argument
 
 def action_from(net, obs) -> list[int]:
     """Network outputs -> a MultiBinary(3) action. Edit to match your own."""
-    out = net.activate(obs)
-    return [1 if o > 0.5 else 0 for o in out]
+    return action_from_outputs(net.activate(net_inputs(net, obs)))
 
 
 def _px(wx: float, wy: float) -> tuple[float, float]:
@@ -66,7 +72,7 @@ def _scale(v: float) -> float:
     return v / (X_MAX - X_MIN) * W
 
 
-def draw_frame(game, step: int, score: float) -> Image.Image:
+def draw_frame(game, step: int, score: float, hud: str = "") -> Image.Image:
     img = Image.new("RGB", (W, H), SKY)
     d = ImageDraw.Draw(img)
 
@@ -98,51 +104,105 @@ def draw_frame(game, step: int, score: float) -> Image.Image:
            fill=RIGHT, font=FONT)
     mid = f"step {step}      score {score:+.0f}"
     d.text(((W - d.textlength(mid, font=FONT)) / 2, 10), mid, fill=INK, font=FONT)
+    if hud:
+        d.text(((W - d.textlength(hud, font=FONT)) / 2, 30), hud, fill=INK, font=FONT)
     return img
 
 
-def record(net, out: str, seed: int = 0, max_steps: int = 1400,
-           every: int = 3, fps: int = 30) -> tuple[float, int]:
-    """Play one episode, writing frames to `out`. Returns (score, steps)."""
+def record(net, out: str, seed: int = 1_000_000, max_steps: int = 3000,
+           every: int = 3, fps: int = 30, sheet: str | None = None,
+           sheet_frames: int = 24) -> dict:
+    """Play one episode, writing frames to `out` (and a contact sheet PNG).
+
+    The HUD shows our contacts / returns so far and the buttons pressed this
+    step, counted exactly as episode.run_episode counts them for the logs.
+    Returns the episode totals so they can be checked against run_episode.
+    """
     env = sv.SlimeVolleyEnv()
     env.seed(seed)
     obs = env.reset()
+    # env.reset() does not reset the built-in opponent's RNN state; without
+    # this the same seed would not replay the game evaluate.py scored.
+    env.policy.reset()
+    if hasattr(net, "reset"):
+        net.reset()
     frames, score = [], 0.0
+    contacts = returns = 0
+    pending = False
     for step in range(max_steps):
-        result = env.step(action_from(net, obs))
+        action = action_from(net, obs)
+        before = _CONTACTS[1]
+        result = env.step(action)
         obs, reward, done = result[0], result[1], result[2]
         score += reward
-        if step % every == 0:
-            frames.append(draw_frame(env.game, step, score))
+        touched = _CONTACTS[1] - before
+        contacts += touched
+        if touched:
+            pending = True
+        elif pending and (env.game.ball.x < 0 or reward):
+            returns += env.game.ball.x < 0 or reward > 0
+            pending = False
+        if step % every == 0 or done:
+            buttons = "".join(c if a else "." for c, a in zip("FBJ", action))
+            hud = f"contacts {contacts}   returns {returns}   buttons {buttons}"
+            frames.append(draw_frame(env.game, step, score, hud))
         if done:
             break
-    frames.append(draw_frame(env.game, step, score))
     frames[0].save(out, save_all=True, append_images=frames[1:],
                    duration=int(1000 / fps), loop=0)
-    return score, step + 1
+    if sheet:
+        write_sheet(frames, sheet, sheet_frames)
+    return {"score": score, "steps": step + 1, "contacts": contacts, "returns": returns}
+
+
+def write_sheet(frames: list, path: str, n: int, cols: int = 4) -> None:
+    """n evenly spaced frames tiled into one PNG, for a quick look without a GIF viewer."""
+    pick = [frames[round(i * (len(frames) - 1) / max(1, n - 1))] for i in range(n)]
+    tw, th = W // 2, H // 2
+    rows = (len(pick) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * tw, rows * th), (255, 255, 255))
+    for i, f in enumerate(pick):
+        sheet.paste(f.resize((tw, th)), ((i % cols) * tw, (i // cols) * th))
+    sheet.save(path)
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--winner", default=str(HERE / "runs" / "run" / "champion.pkl"))
     ap.add_argument("--config", default=str(HERE / "neat_config.ini"))
-    ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--max-steps", type=int, default=1400)
+    ap.add_argument("--seed", type=int, default=1_000_000,
+                    help="episode seed (>= 1_000_000 are held-out, never trained on)")
+    ap.add_argument("--max-steps", type=int, default=3000)
     ap.add_argument("--every", type=int, default=3, help="keep 1 frame in N")
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--out", default="champion.gif")
+    ap.add_argument("--sheet", help="also write a PNG contact sheet of evenly spaced frames")
     args = ap.parse_args()
 
+    run_config = Path(args.winner).parent / "config.ini"
+    config_path = run_config if run_config.exists() else Path(args.config)
+    print(f"config: {config_path}")
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         args.config)
+                         str(config_path))
     with open(args.winner, "rb") as fh:
         blob = pickle.load(fh)
     genome = blob["genome"] if isinstance(blob, dict) else blob
 
-    score, steps = record(make_net(genome, config), args.out, seed=args.seed,
-                          max_steps=args.max_steps, every=args.every, fps=args.fps)
-    print(f"seed {args.seed}: score {score:+.1f} over {steps} steps -> {args.out}")
+    shown = record(make_net(genome, config), args.out, seed=args.seed, max_steps=args.max_steps,
+                   every=args.every, fps=args.fps, sheet=args.sheet)
+    print(f"seed {args.seed}: score {shown['score']:+.1f} over {shown['steps']} steps, "
+          f"contacts {shown['contacts']}, returns {shown['returns']} -> {args.out}")
+    # Cross-check: the replay must show the same episode the logs/evaluate score.
+    env = sv.SlimeVolleyEnv()
+    env.seed(args.seed)
+    net = make_net(genome, config)
+    if hasattr(net, "reset"):
+        net.reset()
+    logged = run_episode(net, env).to_dict()
+    same = all(shown[k] == logged[k] for k in shown)
+    print(f"matches run_episode (what the logs record): {same}"
+          + ("" if same else f"  replay {shown} vs logged { {k: logged[k] for k in shown} }"))
     return 0
 
 

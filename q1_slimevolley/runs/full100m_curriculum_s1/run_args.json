@@ -1,0 +1,69 @@
+{
+  "argv": [
+    "evolve.py",
+    "--seed",
+    "1",
+    "--config",
+    "configs/relative.ini",
+    "--phase1-steps",
+    "40000000",
+    "--phase1-survival",
+    "0.3",
+    "--survival-bonus",
+    "0.3",
+    "--return-bonus",
+    "0.07",
+    "--return-cap",
+    "9",
+    "--run-id",
+    "full100m_curriculum_s1"
+  ],
+  "args": {
+    "generations": 100000,
+    "budget": 100000000,
+    "workers": 9,
+    "config": "configs/relative.ini",
+    "run_id": "full100m_curriculum_s1",
+    "seed": 1,
+    "episodes": 5,
+    "val_top": 3,
+    "val_episodes": 20,
+    "survival_bonus": 0.3,
+    "return_bonus": 0.07,
+    "phase1_steps": 40000000,
+    "phase1_survival": 0.3,
+    "snapshot_every": 10000000,
+    "return_cap": 9
+  },
+  "git_commit": "5a994f4b3b84375a2f2da0f9d1ae0bf555f6484c-dirty",
+  "start_time": "2026-10-04T17:42:52",
+  "python": "3.11.17",
+  "neat_version": "2.0.0",
+  "seed_ranges": {
+    "train": [
+      0,
+      1000000
+    ],
+    "heldout_start": 1000000,
+    "heldout": [
+      1000000,
+      2000000
+    ],
+    "val": [
+      2000000,
+      2000020
+    ]
+  },
+  "end_time": "2026-10-04T17:55:00",
+  "generations_completed": 421,
+  "steps_used": 99196489,
+  "stopped_early": true,
+  "champion": {
+    "key": 17201,
+    "generation": 305,
+    "train_fitness": -4.58812,
+    "val_mean": -4.55,
+    "nodes": 41,
+    "conns": 34
+  }
+}

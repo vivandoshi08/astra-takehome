@@ -1,0 +1,887 @@
+
+ ****** Running generation 0 ****** 
+
+Population's average fitness: 0.34541 stdev: 0.35565
+Best fitness: 1.46210 - size: (3, 42) - species 2 - id 14
+  [gen 0] train best +1.46 mean +0.35 (raw -4.60/-4.95) | val best -4.80 champion -4.80 | species 7 | best size 3n/42c | ep len 517 timeouts 0%
+           contacts/ep 1.25 returns/ep 0.29 | cancel 0.26 saturated 0.50 | pop size 3.0n/42.0c | 2.1s
+           moved/ep 26 jumps/ep 10.3 jump->hit 0.07 | at net 0.37 back 0.41
+  [budget] 204,070 / 15,000,000 steps (+204,070 this gen)
+Average adjusted fitness: 0.278
+Mean genetic distance 1.151, standard deviation 0.268
+Population of 64 members in 12 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.083 sec
+
+ ****** Running generation 1 ****** 
+
+Population's average fitness: 0.55353 stdev: 0.44995
+Best fitness: 1.66980 - size: (3, 42) - species 7 - id 39
+  [gen 1] train best +1.67 mean +0.55 (raw -4.80/-5.00) | val best -4.70 champion -4.70 | species 12 | best size 3n/42c | ep len 567 timeouts 0%
+           contacts/ep 1.52 returns/ep 0.50 | cancel 0.22 saturated 0.48 | pop size 3.1n/41.8c | 1.7s
+           moved/ep 28 jumps/ep 10.6 jump->hit 0.09 | at net 0.65 back 0.22
+  [budget] 422,861 / 15,000,000 steps (+218,791 this gen)
+Average adjusted fitness: 0.280
+Mean genetic distance 1.192, standard deviation 0.296
+Population of 64 members in 16 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.720 sec (1.901 average)
+
+ ****** Running generation 2 ****** 
+
+Population's average fitness: 0.59411 stdev: 0.41840
+Best fitness: 1.27840 - size: (3, 42) - species 7 - id 156
+  [gen 2] train best +1.28 mean +0.59 (raw -4.40/-4.67) | val best -4.75 champion -4.70 | species 16 | best size 3n/42c | ep len 691 timeouts 0%
+           contacts/ep 1.62 returns/ep 0.53 | cancel 0.24 saturated 0.49 | pop size 3.3n/41.8c | 3.9s
+           moved/ep 39 jumps/ep 16.8 jump->hit 0.07 | at net 0.74 back 0.14
+  [budget] 682,317 / 15,000,000 steps (+259,456 this gen)
+Average adjusted fitness: 0.370
+Mean genetic distance 1.321, standard deviation 0.345
+Population of 64 members in 19 species (after reproduction)
+Total extinctions: 0
+Generation time: 3.868 sec (2.557 average)
+
+ ****** Running generation 3 ****** 
+
+Population's average fitness: 0.53732 stdev: 0.34282
+Best fitness: 1.45900 - size: (3, 42) - species 18 - id 172
+  [gen 3] train best +1.46 mean +0.54 (raw -4.60/-4.98) | val best -4.65 champion -4.65 | species 19 | best size 3n/42c | ep len 561 timeouts 0%
+           contacts/ep 1.45 returns/ep 0.48 | cancel 0.24 saturated 0.54 | pop size 3.5n/41.7c | 3.3s
+           moved/ep 28 jumps/ep 13.8 jump->hit 0.08 | at net 0.71 back 0.09
+  [budget] 899,868 / 15,000,000 steps (+217,551 this gen)
+Average adjusted fitness: 0.352
+Mean genetic distance 1.378, standard deviation 0.351
+Population of 64 members in 20 species (after reproduction)
+Total extinctions: 0
+Generation time: 3.318 sec (2.747 average)
+
+ ****** Running generation 4 ****** 
+
+Population's average fitness: 0.66929 stdev: 0.44000
+Best fitness: 1.46650 - size: (3, 39) - species 5 - id 187
+  [gen 4] train best +1.47 mean +0.67 (raw -4.60/-4.92) | val best -4.65 champion -4.65 | species 20 | best size 3n/39c | ep len 599 timeouts 0%
+           contacts/ep 1.48 returns/ep 0.61 | cancel 0.26 saturated 0.56 | pop size 3.5n/41.5c | 2.4s
+           moved/ep 26 jumps/ep 13.7 jump->hit 0.08 | at net 0.70 back 0.12
+  [budget] 1,129,539 / 15,000,000 steps (+229,671 this gen)
+Average adjusted fitness: 0.382
+Mean genetic distance 1.440, standard deviation 0.364
+Population of 64 members in 20 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.430 sec (2.683 average)
+
+ ****** Running generation 5 ****** 
+
+Population's average fitness: 0.63989 stdev: 0.44264
+Best fitness: 1.86638 - size: (5, 44) - species 16 - id 175
+  [gen 5] train best +1.87 mean +0.64 (raw -4.80/-4.99) | val best -4.75 champion -4.65 | species 20 | best size 5n/44c | ep len 555 timeouts 0%
+           contacts/ep 1.54 returns/ep 0.58 | cancel 0.23 saturated 0.56 | pop size 3.6n/41.6c | 2.8s
+           moved/ep 23 jumps/ep 12.4 jump->hit 0.07 | at net 0.71 back 0.10
+  [budget] 1,345,406 / 15,000,000 steps (+215,867 this gen)
+Average adjusted fitness: 0.291
+Mean genetic distance 1.459, standard deviation 0.373
+Population of 64 members in 22 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.777 sec (2.699 average)
+
+ ****** Running generation 6 ****** 
+
+Population's average fitness: 1.06679 stdev: 0.74093
+Best fitness: 2.67264 - size: (4, 43) - species 6 - id 252
+  [gen 6] train best +2.67 mean +1.07 (raw -4.40/-4.94) | val best -4.75 champion -4.65 | species 22 | best size 4n/43c | ep len 637 timeouts 0%
+           contacts/ep 1.83 returns/ep 1.00 | cancel 0.19 saturated 0.57 | pop size 3.7n/41.8c | 2.5s
+           moved/ep 30 jumps/ep 15.0 jump->hit 0.09 | at net 0.79 back 0.08
+  [budget] 1,587,699 / 15,000,000 steps (+242,293 this gen)
+Average adjusted fitness: 0.371
+Mean genetic distance 1.556, standard deviation 0.397
+Population of 64 members in 24 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.548 sec (2.677 average)
+
+ ****** Running generation 7 ****** 
+
+Population's average fitness: 0.72223 stdev: 0.48270
+Best fitness: 1.47444 - size: (5, 45) - species 22 - id 273
+  [gen 7] train best +1.47 mean +0.72 (raw -4.40/-4.77) | val best -4.70 champion -4.65 | species 24 | best size 5n/45c | ep len 629 timeouts 0%
+           contacts/ep 1.72 returns/ep 0.66 | cancel 0.21 saturated 0.60 | pop size 4.0n/41.9c | 3.3s
+           moved/ep 32 jumps/ep 16.1 jump->hit 0.08 | at net 0.79 back 0.09
+  [budget] 1,826,390 / 15,000,000 steps (+238,691 this gen)
+Average adjusted fitness: 0.430
+Mean genetic distance 1.576, standard deviation 0.399
+Population of 64 members in 27 species (after reproduction)
+Total extinctions: 0
+Generation time: 3.327 sec (2.759 average)
+
+ ****** Running generation 8 ****** 
+
+Population's average fitness: 0.22705 stdev: 0.13597
+Best fitness: 0.65188 - size: (3, 39) - species 14 - id 302
+  [gen 8] train best +0.65 mean +0.23 (raw -4.80/-4.92) | val best -4.75 champion -4.65 | species 27 | best size 3n/39c | ep len 521 timeouts 0%
+           contacts/ep 0.95 returns/ep 0.17 | cancel 0.19 saturated 0.62 | pop size 3.9n/41.7c | 1.7s
+           moved/ep 23 jumps/ep 13.3 jump->hit 0.05 | at net 0.79 back 0.07
+  [budget] 2,030,431 / 15,000,000 steps (+204,041 this gen)
+Average adjusted fitness: 0.179
+Mean genetic distance 1.628, standard deviation 0.403
+Population of 64 members in 28 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.695 sec (2.641 average)
+
+ ****** Running generation 9 ****** 
+
+Population's average fitness: 0.95874 stdev: 0.64881
+Best fitness: 2.08636 - size: (3, 41) - species 18 - id 221
+  [gen 9] train best +2.09 mean +0.96 (raw -3.80/-4.36) | val best -4.80 champion -4.65 | species 28 | best size 3n/41c | ep len 744 timeouts 0%
+           contacts/ep 2.06 returns/ep 0.88 | cancel 0.20 saturated 0.62 | pop size 4.0n/41.5c | 2.7s
+           moved/ep 34 jumps/ep 18.7 jump->hit 0.08 | at net 0.82 back 0.07
+  [budget] 2,306,248 / 15,000,000 steps (+275,817 this gen)
+Average adjusted fitness: 0.447
+Mean genetic distance 1.634, standard deviation 0.421
+Population of 64 members in 28 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.709 sec (2.647 average)
+
+ ****** Running generation 10 ****** 
+
+Population's average fitness: 0.22722 stdev: 0.13884
+Best fitness: 0.66194 - size: (3, 41) - species 2 - id 244
+  [gen 10] train best +0.66 mean +0.23 (raw -5.00/-5.00) | val best -4.80 champion -4.65 | species 28 | best size 3n/41c | ep len 585 timeouts 0%
+           contacts/ep 0.89 returns/ep 0.17 | cancel 0.20 saturated 0.63 | pop size 4.0n/41.6c | 2.2s
+           moved/ep 26 jumps/ep 14.3 jump->hit 0.04 | at net 0.76 back 0.10
+  [budget] 2,529,345 / 15,000,000 steps (+223,097 this gen)
+Average adjusted fitness: 0.174
+Mean genetic distance 1.612, standard deviation 0.421
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.171 sec (2.656 average)
+
+ ****** Running generation 11 ****** 
+
+Population's average fitness: 0.30518 stdev: 0.20014
+Best fitness: 1.08078 - size: (3, 42) - species 2 - id 127
+  [gen 11] train best +1.08 mean +0.31 (raw -4.40/-4.77) | val best -4.80 champion -4.65 | species 29 | best size 3n/42c | ep len 708 timeouts 0%
+           contacts/ep 1.17 returns/ep 0.23 | cancel 0.22 saturated 0.63 | pop size 4.0n/41.6c | 3.4s
+           moved/ep 30 jumps/ep 17.9 jump->hit 0.05 | at net 0.76 back 0.08
+  [budget] 2,792,726 / 15,000,000 steps (+263,381 this gen)
+Average adjusted fitness: 0.231
+Mean genetic distance 1.632, standard deviation 0.418
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 3.426 sec (2.827 average)
+
+ ****** Running generation 12 ****** 
+
+Population's average fitness: 0.47638 stdev: 0.29542
+Best fitness: 1.06238 - size: (4, 41) - species 24 - id 298
+  [gen 12] train best +1.06 mean +0.48 (raw -4.80/-4.92) | val best -4.75 champion -4.65 | species 29 | best size 4n/41c | ep len 545 timeouts 0%
+           contacts/ep 1.46 returns/ep 0.42 | cancel 0.24 saturated 0.64 | pop size 4.1n/41.7c | 2.0s
+           moved/ep 22 jumps/ep 13.9 jump->hit 0.07 | at net 0.77 back 0.08
+  [budget] 3,006,458 / 15,000,000 steps (+213,732 this gen)
+Average adjusted fitness: 0.422
+Mean genetic distance 1.638, standard deviation 0.415
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.986 sec (2.639 average)
+
+ ****** Running generation 13 ****** 
+
+Population's average fitness: 0.59143 stdev: 0.44276
+Best fitness: 1.65940 - size: (3, 41) - species 2 - id 342
+  [gen 13] train best +1.66 mean +0.59 (raw -4.80/-5.00) | val best -4.80 champion -4.65 | species 30 | best size 3n/41c | ep len 539 timeouts 0%
+           contacts/ep 1.27 returns/ep 0.54 | cancel 0.22 saturated 0.64 | pop size 4.0n/41.6c | 1.7s
+           moved/ep 22 jumps/ep 12.9 jump->hit 0.07 | at net 0.75 back 0.10
+  [budget] 3,217,484 / 15,000,000 steps (+211,026 this gen)
+Average adjusted fitness: 0.359
+Mean genetic distance 1.656, standard deviation 0.420
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.706 sec (2.478 average)
+
+ ****** Running generation 14 ****** 
+
+Population's average fitness: 0.67104 stdev: 0.46017
+Best fitness: 1.66726 - size: (5, 43) - species 23 - id 283
+  [gen 14] train best +1.67 mean +0.67 (raw -4.80/-4.80) | val best -4.75 champion -4.65 | species 30 | best size 5n/43c | ep len 554 timeouts 0%
+           contacts/ep 1.58 returns/ep 0.62 | cancel 0.22 saturated 0.65 | pop size 4.1n/41.6c | 1.7s
+           moved/ep 24 jumps/ep 14.4 jump->hit 0.07 | at net 0.78 back 0.08
+  [budget] 3,432,910 / 15,000,000 steps (+215,426 this gen)
+Average adjusted fitness: 0.370
+Mean genetic distance 1.662, standard deviation 0.421
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.749 sec (2.409 average)
+
+ ****** Running generation 15 ****** 
+
+Population's average fitness: 0.72577 stdev: 0.43200
+Best fitness: 1.66656 - size: (4, 41) - species 15 - id 333
+  [gen 15] train best +1.67 mean +0.73 (raw -4.80/-4.99) | val best -4.80 champion -4.65 | species 30 | best size 4n/41c | ep len 633 timeouts 0%
+           contacts/ep 2.06 returns/ep 0.66 | cancel 0.21 saturated 0.64 | pop size 4.2n/41.7c | 2.8s
+           moved/ep 25 jumps/ep 16.3 jump->hit 0.09 | at net 0.80 back 0.06
+  [budget] 3,673,370 / 15,000,000 steps (+240,460 this gen)
+Average adjusted fitness: 0.407
+Mean genetic distance 1.670, standard deviation 0.423
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.775 sec (2.409 average)
+
+ ****** Running generation 16 ****** 
+
+Population's average fitness: 0.49238 stdev: 0.29275
+Best fitness: 1.46762 - size: (4, 41) - species 15 - id 333
+  [gen 16] train best +1.47 mean +0.49 (raw -5.00/-5.00) | val best -4.80 champion -4.65 | species 31 | best size 4n/41c | ep len 580 timeouts 0%
+           contacts/ep 1.37 returns/ep 0.43 | cancel 0.21 saturated 0.64 | pop size 4.2n/41.7c | 1.9s
+           moved/ep 25 jumps/ep 14.4 jump->hit 0.07 | at net 0.76 back 0.10
+  [budget] 3,897,331 / 15,000,000 steps (+223,961 this gen)
+Average adjusted fitness: 0.316
+Mean genetic distance 1.662, standard deviation 0.416
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.853 sec (2.340 average)
+
+ ****** Running generation 17 ****** 
+
+Population's average fitness: 0.58504 stdev: 0.34276
+Best fitness: 1.26914 - size: (4, 40) - species 18 - id 319
+  [gen 17] train best +1.27 mean +0.59 (raw -4.40/-4.61) | val best -4.75 champion -4.65 | species 31 | best size 4n/40c | ep len 632 timeouts 0%
+           contacts/ep 1.50 returns/ep 0.52 | cancel 0.19 saturated 0.64 | pop size 4.2n/41.7c | 1.9s
+           moved/ep 28 jumps/ep 16.1 jump->hit 0.07 | at net 0.80 back 0.07
+  [budget] 4,138,230 / 15,000,000 steps (+240,899 this gen)
+Average adjusted fitness: 0.433
+Mean genetic distance 1.660, standard deviation 0.415
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.957 sec (2.203 average)
+
+ ****** Running generation 18 ****** 
+
+Population's average fitness: 0.55766 stdev: 0.32699
+Best fitness: 1.67224 - size: (4, 40) - species 18 - id 319
+  [gen 18] train best +1.67 mean +0.56 (raw -4.40/-4.79) | val best -4.70 champion -4.65 | species 31 | best size 4n/40c | ep len 639 timeouts 0%
+           contacts/ep 1.69 returns/ep 0.49 | cancel 0.21 saturated 0.63 | pop size 4.2n/41.7c | 2.0s
+           moved/ep 28 jumps/ep 16.4 jump->hit 0.08 | at net 0.79 back 0.07
+  [budget] 4,380,790 / 15,000,000 steps (+242,560 this gen)
+Average adjusted fitness: 0.311
+Mean genetic distance 1.663, standard deviation 0.415
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.957 sec (2.229 average)
+
+ ****** Running generation 19 ****** 
+
+Population's average fitness: 0.70614 stdev: 0.47828
+Best fitness: 2.28280 - size: (3, 41) - species 18 - id 221
+  [gen 19] train best +2.28 mean +0.71 (raw -4.80/-4.99) | val best -4.80 champion -4.65 | species 31 | best size 3n/41c | ep len 624 timeouts 0%
+           contacts/ep 2.22 returns/ep 0.64 | cancel 0.20 saturated 0.63 | pop size 4.2n/41.7c | 2.3s
+           moved/ep 28 jumps/ep 16.3 jump->hit 0.12 | at net 0.78 back 0.08
+  [budget] 4,618,497 / 15,000,000 steps (+237,707 this gen)
+Average adjusted fitness: 0.292
+Mean genetic distance 1.666, standard deviation 0.418
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.322 sec (2.190 average)
+
+ ****** Running generation 20 ****** 
+
+Population's average fitness: 0.67379 stdev: 0.29235
+Best fitness: 1.27258 - size: (3, 40) - species 5 - id 147
+  [gen 20] train best +1.27 mean +0.67 (raw -4.60/-4.98) | val best -4.75 champion -4.65 | species 31 | best size 3n/40c | ep len 644 timeouts 0%
+           contacts/ep 1.44 returns/ep 0.61 | cancel 0.21 saturated 0.63 | pop size 4.2n/41.6c | 2.2s
+           moved/ep 27 jumps/ep 16.6 jump->hit 0.06 | at net 0.78 back 0.08
+  [budget] 4,861,882 / 15,000,000 steps (+243,385 this gen)
+Average adjusted fitness: 0.514
+Mean genetic distance 1.671, standard deviation 0.417
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.250 sec (2.198 average)
+
+ ****** Running generation 21 ****** 
+
+Population's average fitness: 0.74087 stdev: 0.47119
+Best fitness: 1.46026 - size: (3, 36) - species 27 - id 320
+  [snapshot] 5M: champion + gen best saved to /Users/vivandoshi/Documents/astra-takehome 3/q1_slimevolley/runs/dh_h5species_s12/snapshots/5M
+  [gen 21] train best +1.46 mean +0.74 (raw -4.80/-5.00) | val best -4.75 champion -4.65 | species 31 | best size 3n/36c | ep len 596 timeouts 0%
+           contacts/ep 1.66 returns/ep 0.68 | cancel 0.23 saturated 0.64 | pop size 4.2n/41.7c | 1.9s
+           moved/ep 26 jumps/ep 15.2 jump->hit 0.08 | at net 0.77 back 0.09
+  [budget] 5,091,696 / 15,000,000 steps (+229,814 this gen)
+Average adjusted fitness: 0.512
+Mean genetic distance 1.676, standard deviation 0.424
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.912 sec (2.047 average)
+
+ ****** Running generation 22 ****** 
+
+Population's average fitness: 0.31133 stdev: 0.19333
+Best fitness: 0.65366 - size: (4, 41) - species 15 - id 333
+  [gen 22] train best +0.65 mean +0.31 (raw -4.80/-4.80) | val best -4.75 champion -4.65 | species 30 | best size 4n/41c | ep len 520 timeouts 0%
+           contacts/ep 0.72 returns/ep 0.26 | cancel 0.22 saturated 0.64 | pop size 4.2n/41.7c | 2.3s
+           moved/ep 23 jumps/ep 13.1 jump->hit 0.03 | at net 0.74 back 0.11
+  [budget] 5,296,316 / 15,000,000 steps (+204,620 this gen)
+Average adjusted fitness: 0.279
+Mean genetic distance 1.679, standard deviation 0.424
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.272 sec (2.075 average)
+
+ ****** Running generation 23 ****** 
+
+Population's average fitness: 0.58153 stdev: 0.36578
+Best fitness: 1.27316 - size: (3, 41) - species 6 - id 84
+  [gen 23] train best +1.27 mean +0.58 (raw -4.80/-4.97) | val best -4.75 champion -4.65 | species 30 | best size 3n/41c | ep len 659 timeouts 0%
+           contacts/ep 1.36 returns/ep 0.52 | cancel 0.21 saturated 0.63 | pop size 4.2n/41.6c | 2.8s
+           moved/ep 26 jumps/ep 17.0 jump->hit 0.07 | at net 0.80 back 0.07
+  [budget] 5,545,972 / 15,000,000 steps (+249,656 this gen)
+Average adjusted fitness: 0.462
+Mean genetic distance 1.687, standard deviation 0.430
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.773 sec (2.182 average)
+
+ ****** Running generation 24 ****** 
+
+Population's average fitness: 0.72405 stdev: 0.41184
+Best fitness: 1.26666 - size: (5, 41) - species 15 - id 391
+  [gen 24] train best +1.27 mean +0.72 (raw -5.00/-5.00) | val best -4.70 champion -4.65 | species 29 | best size 5n/41c | ep len 584 timeouts 0%
+           contacts/ep 1.37 returns/ep 0.67 | cancel 0.21 saturated 0.63 | pop size 4.3n/41.6c | 2.1s
+           moved/ep 23 jumps/ep 16.5 jump->hit 0.06 | at net 0.78 back 0.09
+  [budget] 5,772,675 / 15,000,000 steps (+226,703 this gen)
+Average adjusted fitness: 0.537
+Mean genetic distance 1.684, standard deviation 0.424
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.063 sec (2.213 average)
+
+ ****** Running generation 25 ****** 
+
+Population's average fitness: 1.07261 stdev: 0.67450
+Best fitness: 2.26714 - size: (4, 42) - species 25 - id 355
+  [gen 25] train best +2.27 mean +1.07 (raw -4.60/-4.89) | val best -4.70 champion -4.65 | species 30 | best size 4n/42c | ep len 632 timeouts 0%
+           contacts/ep 2.00 returns/ep 1.01 | cancel 0.20 saturated 0.63 | pop size 4.2n/41.5c | 2.0s
+           moved/ep 24 jumps/ep 17.1 jump->hit 0.07 | at net 0.80 back 0.08
+  [budget] 6,013,102 / 15,000,000 steps (+240,427 this gen)
+Average adjusted fitness: 0.488
+Mean genetic distance 1.705, standard deviation 0.429
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.962 sec (2.132 average)
+
+ ****** Running generation 26 ****** 
+
+Population's average fitness: 0.49153 stdev: 0.28490
+Best fitness: 1.27358 - size: (7, 45) - species 22 - id 345
+  [gen 26] train best +1.27 mean +0.49 (raw -4.40/-4.54) | val best -4.75 champion -4.65 | species 30 | best size 7n/45c | ep len 634 timeouts 0%
+           contacts/ep 1.19 returns/ep 0.43 | cancel 0.20 saturated 0.64 | pop size 4.4n/41.7c | 2.4s
+           moved/ep 23 jumps/ep 17.9 jump->hit 0.05 | at net 0.81 back 0.07
+  [budget] 6,255,734 / 15,000,000 steps (+242,632 this gen)
+Average adjusted fitness: 0.356
+Mean genetic distance 1.734, standard deviation 0.429
+Population of 64 members in 22 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.414 sec (2.188 average)
+
+ ****** Running generation 27 ****** 
+
+Population's average fitness: 0.39460 stdev: 0.23445
+Best fitness: 1.47330 - size: (5, 43) - species 23 - id 283
+  [gen 27] train best +1.47 mean +0.39 (raw -4.60/-4.79) | val best -4.75 champion -4.65 | species 22 | best size 5n/43c | ep len 634 timeouts 0%
+           contacts/ep 1.08 returns/ep 0.33 | cancel 0.22 saturated 0.63 | pop size 4.6n/41.7c | 7.7s
+           moved/ep 27 jumps/ep 16.5 jump->hit 0.05 | at net 0.80 back 0.08
+  [budget] 6,496,739 / 15,000,000 steps (+241,005 this gen)
+Average adjusted fitness: 0.241
+Mean genetic distance 1.757, standard deviation 0.419
+Population of 64 members in 26 species (after reproduction)
+Total extinctions: 0
+Generation time: 7.701 sec (2.762 average)
+
+ ****** Running generation 28 ****** 
+
+Population's average fitness: 0.63368 stdev: 0.32146
+Best fitness: 1.26292 - size: (3, 39) - species 5 - id 413
+  [gen 28] train best +1.26 mean +0.63 (raw -4.40/-4.77) | val best -4.75 champion -4.65 | species 26 | best size 3n/39c | ep len 524 timeouts 0%
+           contacts/ep 0.97 returns/ep 0.58 | cancel 0.22 saturated 0.63 | pop size 4.4n/41.2c | 2.6s
+           moved/ep 20 jumps/ep 13.6 jump->hit 0.05 | at net 0.77 back 0.06
+  [budget] 6,702,357 / 15,000,000 steps (+205,618 this gen)
+Average adjusted fitness: 0.463
+Mean genetic distance 1.745, standard deviation 0.428
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.532 sec (2.820 average)
+
+ ****** Running generation 29 ****** 
+
+Population's average fitness: 0.67738 stdev: 0.34929
+Best fitness: 1.26414 - size: (3, 38) - species 18 - id 468
+  [gen 29] train best +1.26 mean +0.68 (raw -4.80/-4.99) | val best -4.75 champion -4.65 | species 29 | best size 3n/38c | ep len 555 timeouts 0%
+           contacts/ep 1.47 returns/ep 0.62 | cancel 0.20 saturated 0.66 | pop size 4.5n/41.1c | 2.8s
+           moved/ep 18 jumps/ep 14.8 jump->hit 0.08 | at net 0.81 back 0.03
+  [budget] 6,918,363 / 15,000,000 steps (+216,006 this gen)
+Average adjusted fitness: 0.508
+Mean genetic distance 1.784, standard deviation 0.422
+Population of 64 members in 25 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.828 sec (2.871 average)
+
+ ****** Running generation 30 ****** 
+
+Population's average fitness: 0.63415 stdev: 0.39537
+Best fitness: 1.66540 - size: (6, 43) - species 30 - id 313
+  [gen 30] train best +1.67 mean +0.63 (raw -4.80/-4.99) | val best -4.70 champion -4.65 | species 25 | best size 6n/43c | ep len 592 timeouts 0%
+           contacts/ep 1.59 returns/ep 0.57 | cancel 0.22 saturated 0.64 | pop size 4.5n/41.0c | 2.3s
+           moved/ep 20 jumps/ep 15.1 jump->hit 0.08 | at net 0.82 back 0.04
+  [budget] 7,145,691 / 15,000,000 steps (+227,328 this gen)
+Average adjusted fitness: 0.357
+Mean genetic distance 1.815, standard deviation 0.417
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.343 sec (2.880 average)
+
+ ****** Running generation 31 ****** 
+
+Population's average fitness: 0.74909 stdev: 0.45138
+Best fitness: 1.87110 - size: (4, 38) - species 33 - id 421
+  [gen 31] train best +1.87 mean +0.75 (raw -4.60/-4.99) | val best -4.75 champion -4.65 | species 30 | best size 4n/38c | ep len 616 timeouts 0%
+           contacts/ep 1.72 returns/ep 0.69 | cancel 0.21 saturated 0.64 | pop size 4.6n/40.8c | 2.3s
+           moved/ep 18 jumps/ep 15.8 jump->hit 0.09 | at net 0.81 back 0.04
+  [budget] 7,380,446 / 15,000,000 steps (+234,755 this gen)
+Average adjusted fitness: 0.358
+Mean genetic distance 1.804, standard deviation 0.413
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.297 sec (2.918 average)
+
+ ****** Running generation 32 ****** 
+
+Population's average fitness: 0.79212 stdev: 0.37298
+Best fitness: 1.66774 - size: (5, 42) - species 39 - id 479
+  [gen 32] train best +1.67 mean +0.79 (raw -4.60/-4.77) | val best -4.75 champion -4.65 | species 30 | best size 5n/42c | ep len 609 timeouts 0%
+           contacts/ep 1.77 returns/ep 0.73 | cancel 0.20 saturated 0.63 | pop size 4.4n/40.2c | 2.1s
+           moved/ep 20 jumps/ep 15.8 jump->hit 0.09 | at net 0.79 back 0.05
+  [budget] 7,613,268 / 15,000,000 steps (+232,822 this gen)
+Average adjusted fitness: 0.441
+Mean genetic distance 1.821, standard deviation 0.415
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.086 sec (2.900 average)
+
+ ****** Running generation 33 ****** 
+
+Population's average fitness: 0.51659 stdev: 0.28349
+Best fitness: 1.27834 - size: (5, 42) - species 39 - id 422
+  [gen 33] train best +1.28 mean +0.52 (raw -4.60/-4.72) | val best -4.75 champion -4.65 | species 30 | best size 5n/42c | ep len 697 timeouts 0%
+           contacts/ep 1.15 returns/ep 0.45 | cancel 0.20 saturated 0.63 | pop size 4.5n/40.4c | 2.8s
+           moved/ep 23 jumps/ep 17.2 jump->hit 0.05 | at net 0.78 back 0.06
+  [budget] 7,873,416 / 15,000,000 steps (+260,148 this gen)
+Average adjusted fitness: 0.359
+Mean genetic distance 1.838, standard deviation 0.418
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.773 sec (2.900 average)
+
+ ****** Running generation 34 ****** 
+
+Population's average fitness: 0.41589 stdev: 0.22619
+Best fitness: 1.07010 - size: (3, 39) - species 9 - id 410
+  [gen 34] train best +1.07 mean +0.42 (raw -4.80/-4.80) | val best -4.75 champion -4.65 | species 29 | best size 3n/39c | ep len 690 timeouts 0%
+           contacts/ep 1.54 returns/ep 0.35 | cancel 0.20 saturated 0.64 | pop size 4.5n/40.4c | 2.0s
+           moved/ep 23 jumps/ep 16.4 jump->hit 0.07 | at net 0.75 back 0.08
+  [budget] 8,133,485 / 15,000,000 steps (+260,069 this gen)
+Average adjusted fitness: 0.352
+Mean genetic distance 1.817, standard deviation 0.416
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.056 sec (2.899 average)
+
+ ****** Running generation 35 ****** 
+
+Population's average fitness: 0.37804 stdev: 0.28110
+Best fitness: 1.88102 - size: (6, 43) - species 41 - id 514
+  [gen 35] train best +1.88 mean +0.38 (raw -4.80/-4.99) | val best -4.65 champion -4.65 | species 29 | best size 6n/43c | ep len 624 timeouts 0%
+           contacts/ep 0.93 returns/ep 0.32 | cancel 0.20 saturated 0.63 | pop size 4.4n/40.1c | 2.3s
+           moved/ep 21 jumps/ep 15.0 jump->hit 0.05 | at net 0.75 back 0.06
+  [budget] 8,372,778 / 15,000,000 steps (+239,293 this gen)
+Average adjusted fitness: 0.172
+Mean genetic distance 1.813, standard deviation 0.417
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.331 sec (2.936 average)
+
+ ****** Running generation 36 ****** 
+
+Population's average fitness: 1.01104 stdev: 0.66677
+Best fitness: 2.06516 - size: (6, 44) - species 34 - id 417
+  [gen 36] train best +2.07 mean +1.01 (raw -4.60/-4.92) | val best -4.75 champion -4.65 | species 29 | best size 6n/44c | ep len 579 timeouts 0%
+           contacts/ep 2.03 returns/ep 0.95 | cancel 0.17 saturated 0.61 | pop size 4.5n/40.2c | 1.9s
+           moved/ep 19 jumps/ep 14.2 jump->hit 0.09 | at net 0.76 back 0.05
+  [budget] 8,597,656 / 15,000,000 steps (+224,878 this gen)
+Average adjusted fitness: 0.469
+Mean genetic distance 1.820, standard deviation 0.413
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.869 sec (2.882 average)
+
+ ****** Running generation 37 ****** 
+
+Population's average fitness: 1.10931 stdev: 0.66354
+Best fitness: 2.28092 - size: (3, 37) - species 48 - id 532
+  [gen 37] train best +2.28 mean +1.11 (raw -4.40/-4.84) | val best -4.75 champion -4.65 | species 30 | best size 3n/37c | ep len 687 timeouts 0%
+           contacts/ep 2.37 returns/ep 1.04 | cancel 0.18 saturated 0.62 | pop size 4.5n/40.3c | 2.0s
+           moved/ep 20 jumps/ep 17.2 jump->hit 0.11 | at net 0.81 back 0.05
+  [budget] 8,855,178 / 15,000,000 steps (+257,522 this gen)
+Average adjusted fitness: 0.465
+Mean genetic distance 1.818, standard deviation 0.413
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.067 sec (2.318 average)
+
+ ****** Running generation 38 ****** 
+
+Population's average fitness: 0.75436 stdev: 0.42543
+Best fitness: 2.07664 - size: (3, 38) - species 18 - id 468
+  [gen 38] train best +2.08 mean +0.75 (raw -4.40/-4.53) | val best -4.75 champion -4.65 | species 31 | best size 3n/38c | ep len 700 timeouts 0%
+           contacts/ep 1.95 returns/ep 0.68 | cancel 0.19 saturated 0.61 | pop size 4.5n/40.1c | 2.0s
+           moved/ep 23 jumps/ep 17.0 jump->hit 0.09 | at net 0.80 back 0.05
+  [budget] 9,117,309 / 15,000,000 steps (+262,131 this gen)
+Average adjusted fitness: 0.340
+Mean genetic distance 1.825, standard deviation 0.413
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.032 sec (2.268 average)
+
+ ****** Running generation 39 ****** 
+
+Population's average fitness: 0.19497 stdev: 0.16586
+Best fitness: 0.65776 - size: (3, 37) - species 48 - id 532
+  [gen 39] train best +0.66 mean +0.19 (raw -4.40/-4.59) | val best -4.75 champion -4.65 | species 31 | best size 3n/37c | ep len 543 timeouts 0%
+           contacts/ep 0.76 returns/ep 0.14 | cancel 0.17 saturated 0.62 | pop size 4.6n/40.1c | 1.7s
+           moved/ep 17 jumps/ep 12.8 jump->hit 0.04 | at net 0.76 back 0.04
+  [budget] 9,328,668 / 15,000,000 steps (+211,359 this gen)
+Average adjusted fitness: 0.152
+Mean genetic distance 1.851, standard deviation 0.419
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.665 sec (2.152 average)
+
+ ****** Running generation 40 ****** 
+
+Population's average fitness: 0.79872 stdev: 0.55728
+Best fitness: 2.07364 - size: (8, 45) - species 41 - id 558
+  [gen 40] train best +2.07 mean +0.80 (raw -4.60/-4.89) | val best -4.80 champion -4.65 | species 30 | best size 8n/45c | ep len 643 timeouts 0%
+           contacts/ep 2.14 returns/ep 0.73 | cancel 0.18 saturated 0.61 | pop size 4.6n/40.2c | 2.5s
+           moved/ep 23 jumps/ep 15.7 jump->hit 0.11 | at net 0.77 back 0.06
+  [budget] 9,574,298 / 15,000,000 steps (+245,630 this gen)
+Average adjusted fitness: 0.377
+Mean genetic distance 1.882, standard deviation 0.418
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.454 sec (2.163 average)
+
+ ****** Running generation 41 ****** 
+
+Population's average fitness: 0.43596 stdev: 0.22492
+Best fitness: 1.05734 - size: (5, 42) - species 39 - id 519
+  [gen 41] train best +1.06 mean +0.44 (raw -4.60/-4.98) | val best -4.75 champion -4.65 | species 29 | best size 5n/42c | ep len 547 timeouts 0%
+           contacts/ep 1.57 returns/ep 0.38 | cancel 0.17 saturated 0.61 | pop size 4.8n/40.4c | 2.2s
+           moved/ep 20 jumps/ep 14.2 jump->hit 0.09 | at net 0.79 back 0.04
+  [budget] 9,788,616 / 15,000,000 steps (+214,318 this gen)
+Average adjusted fitness: 0.384
+Mean genetic distance 1.885, standard deviation 0.422
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.197 sec (2.153 average)
+
+ ****** Running generation 42 ****** 
+
+Population's average fitness: 0.94022 stdev: 0.65022
+Best fitness: 2.27744 - size: (4, 39) - species 44 - id 536
+  [snapshot] 10M: champion + gen best saved to /Users/vivandoshi/Documents/astra-takehome 3/q1_slimevolley/runs/dh_h5species_s12/snapshots/10M
+  [gen 42] train best +2.28 mean +0.94 (raw -4.60/-4.95) | val best -4.75 champion -4.65 | species 29 | best size 4n/39c | ep len 621 timeouts 0%
+           contacts/ep 2.28 returns/ep 0.88 | cancel 0.17 saturated 0.61 | pop size 4.8n/40.5c | 2.1s
+           moved/ep 21 jumps/ep 15.5 jump->hit 0.12 | at net 0.80 back 0.04
+  [budget] 10,027,743 / 15,000,000 steps (+239,127 this gen)
+Average adjusted fitness: 0.377
+Mean genetic distance 1.884, standard deviation 0.421
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.091 sec (2.154 average)
+
+ ****** Running generation 43 ****** 
+
+Population's average fitness: 1.10430 stdev: 0.53723
+Best fitness: 2.07462 - size: (3, 37) - species 48 - id 532
+  [gen 43] train best +2.07 mean +1.10 (raw -4.20/-4.52) | val best -4.60 champion -4.60 | species 30 | best size 3n/37c | ep len 668 timeouts 0%
+           contacts/ep 2.21 returns/ep 1.04 | cancel 0.16 saturated 0.61 | pop size 4.8n/40.6c | 3.2s
+           moved/ep 23 jumps/ep 16.7 jump->hit 0.09 | at net 0.81 back 0.04
+  [budget] 10,278,727 / 15,000,000 steps (+250,984 this gen)
+Average adjusted fitness: 0.515
+Mean genetic distance 1.902, standard deviation 0.429
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 3.164 sec (2.193 average)
+
+ ****** Running generation 44 ****** 
+
+Population's average fitness: 0.26405 stdev: 0.22693
+Best fitness: 0.85986 - size: (4, 41) - species 25 - id 455
+  [gen 44] train best +0.86 mean +0.26 (raw -4.80/-4.97) | val best -4.75 champion -4.60 | species 30 | best size 4n/41c | ep len 578 timeouts 0%
+           contacts/ep 1.26 returns/ep 0.21 | cancel 0.16 saturated 0.63 | pop size 4.9n/40.6c | 3.0s
+           moved/ep 19 jumps/ep 14.5 jump->hit 0.07 | at net 0.77 back 0.04
+  [budget] 10,501,900 / 15,000,000 steps (+223,173 this gen)
+Average adjusted fitness: 0.203
+Mean genetic distance 1.906, standard deviation 0.428
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 3.011 sec (2.288 average)
+
+ ****** Running generation 45 ****** 
+
+Population's average fitness: 0.82990 stdev: 0.49653
+Best fitness: 2.28182 - size: (3, 35) - species 49 - id 549
+  [gen 45] train best +2.28 mean +0.83 (raw -4.40/-4.76) | val best -4.70 champion -4.60 | species 30 | best size 3n/35c | ep len 674 timeouts 0%
+           contacts/ep 2.00 returns/ep 0.76 | cancel 0.18 saturated 0.62 | pop size 4.9n/40.6c | 2.2s
+           moved/ep 22 jumps/ep 17.1 jump->hit 0.10 | at net 0.79 back 0.05
+  [budget] 10,755,842 / 15,000,000 steps (+253,942 this gen)
+Average adjusted fitness: 0.331
+Mean genetic distance 1.905, standard deviation 0.427
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.197 sec (2.275 average)
+
+ ****** Running generation 46 ****** 
+
+Population's average fitness: 0.38527 stdev: 0.23556
+Best fitness: 1.06932 - size: (3, 34) - species 49 - id 595
+  [gen 46] train best +1.07 mean +0.39 (raw -4.40/-4.59) | val best -4.60 champion -4.60 | species 30 | best size 3n/34c | ep len 634 timeouts 0%
+           contacts/ep 0.98 returns/ep 0.32 | cancel 0.17 saturated 0.62 | pop size 4.9n/40.5c | 3.0s
+           moved/ep 23 jumps/ep 15.5 jump->hit 0.05 | at net 0.78 back 0.05
+  [budget] 10,997,205 / 15,000,000 steps (+241,363 this gen)
+Average adjusted fitness: 0.323
+Mean genetic distance 1.914, standard deviation 0.426
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 3.029 sec (2.391 average)
+
+ ****** Running generation 47 ****** 
+
+Population's average fitness: 0.86285 stdev: 0.49755
+Best fitness: 2.08500 - size: (6, 42) - species 39 - id 597
+  [gen 47] train best +2.08 mean +0.86 (raw -4.20/-4.57) | val best -4.75 champion -4.60 | species 30 | best size 6n/42c | ep len 722 timeouts 0%
+           contacts/ep 1.71 returns/ep 0.79 | cancel 0.19 saturated 0.63 | pop size 4.9n/40.6c | 2.2s
+           moved/ep 26 jumps/ep 18.2 jump->hit 0.08 | at net 0.79 back 0.05
+  [budget] 11,265,493 / 15,000,000 steps (+268,288 this gen)
+Average adjusted fitness: 0.386
+Mean genetic distance 1.937, standard deviation 0.435
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.193 sec (2.403 average)
+
+ ****** Running generation 48 ****** 
+
+Population's average fitness: 0.80345 stdev: 0.47515
+Best fitness: 2.07438 - size: (3, 34) - species 49 - id 595
+  [gen 48] train best +2.07 mean +0.80 (raw -4.80/-4.99) | val best -4.75 champion -4.60 | species 31 | best size 3n/34c | ep len 691 timeouts 0%
+           contacts/ep 1.82 returns/ep 0.73 | cancel 0.18 saturated 0.63 | pop size 5.0n/40.8c | 2.1s
+           moved/ep 23 jumps/ep 17.6 jump->hit 0.09 | at net 0.78 back 0.06
+  [budget] 11,525,176 / 15,000,000 steps (+259,683 this gen)
+Average adjusted fitness: 0.366
+Mean genetic distance 1.934, standard deviation 0.443
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.059 sec (2.406 average)
+
+ ****** Running generation 49 ****** 
+
+Population's average fitness: 0.48522 stdev: 0.33119
+Best fitness: 1.46770 - size: (3, 34) - species 49 - id 595
+  [gen 49] train best +1.47 mean +0.49 (raw -4.60/-4.80) | val best -4.75 champion -4.60 | species 31 | best size 3n/34c | ep len 602 timeouts 0%
+           contacts/ep 1.52 returns/ep 0.42 | cancel 0.18 saturated 0.63 | pop size 4.9n/40.5c | 2.1s
+           moved/ep 20 jumps/ep 15.2 jump->hit 0.08 | at net 0.78 back 0.04
+  [budget] 11,757,805 / 15,000,000 steps (+232,629 this gen)
+Average adjusted fitness: 0.298
+Mean genetic distance 1.935, standard deviation 0.441
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.082 sec (2.448 average)
+
+ ****** Running generation 50 ****** 
+
+Population's average fitness: 0.76815 stdev: 0.36394
+Best fitness: 1.67024 - size: (5, 39) - species 33 - id 557
+  [gen 50] train best +1.67 mean +0.77 (raw -4.60/-4.78) | val best -4.75 champion -4.60 | species 31 | best size 5n/39c | ep len 619 timeouts 0%
+           contacts/ep 1.94 returns/ep 0.71 | cancel 0.18 saturated 0.63 | pop size 4.9n/40.5c | 1.9s
+           moved/ep 20 jumps/ep 15.6 jump->hit 0.10 | at net 0.77 back 0.06
+  [budget] 11,994,970 / 15,000,000 steps (+237,165 this gen)
+Average adjusted fitness: 0.439
+Mean genetic distance 1.930, standard deviation 0.445
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.881 sec (2.390 average)
+
+ ****** Running generation 51 ****** 
+
+Population's average fitness: 0.72972 stdev: 0.47502
+Best fitness: 1.66924 - size: (6, 44) - species 34 - id 584
+  [gen 51] train best +1.67 mean +0.73 (raw -4.40/-4.73) | val best -4.75 champion -4.60 | species 30 | best size 6n/44c | ep len 610 timeouts 0%
+           contacts/ep 1.64 returns/ep 0.67 | cancel 0.20 saturated 0.63 | pop size 4.8n/40.3c | 3.0s
+           moved/ep 22 jumps/ep 14.6 jump->hit 0.08 | at net 0.76 back 0.05
+  [budget] 12,229,372 / 15,000,000 steps (+234,402 this gen)
+Average adjusted fitness: 0.426
+Mean genetic distance 1.939, standard deviation 0.456
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.993 sec (2.470 average)
+
+ ****** Running generation 52 ****** 
+
+Population's average fitness: 0.60827 stdev: 0.33110
+Best fitness: 1.66740 - size: (6, 42) - species 39 - id 597
+  [gen 52] train best +1.67 mean +0.61 (raw -4.20/-4.40) | val best -4.75 champion -4.60 | species 29 | best size 6n/42c | ep len 614 timeouts 0%
+           contacts/ep 1.55 returns/ep 0.55 | cancel 0.19 saturated 0.63 | pop size 4.9n/40.5c | 2.2s
+           moved/ep 21 jumps/ep 15.2 jump->hit 0.08 | at net 0.78 back 0.06
+  [budget] 12,463,177 / 15,000,000 steps (+233,805 this gen)
+Average adjusted fitness: 0.333
+Mean genetic distance 1.955, standard deviation 0.459
+Population of 64 members in 30 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.157 sec (2.476 average)
+
+ ****** Running generation 53 ****** 
+
+Population's average fitness: 1.17247 stdev: 0.72830
+Best fitness: 2.88170 - size: (6, 44) - species 51 - id 562
+  [gen 53] train best +2.88 mean +1.17 (raw -4.40/-4.93) | val best -4.75 champion -4.60 | species 30 | best size 6n/44c | ep len 725 timeouts 0%
+           contacts/ep 2.12 returns/ep 1.10 | cancel 0.19 saturated 0.63 | pop size 5.0n/40.7c | 1.9s
+           moved/ep 22 jumps/ep 17.8 jump->hit 0.10 | at net 0.78 back 0.06
+  [budget] 12,732,453 / 15,000,000 steps (+269,276 this gen)
+Average adjusted fitness: 0.387
+Mean genetic distance 1.959, standard deviation 0.457
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.943 sec (2.354 average)
+
+ ****** Running generation 54 ****** 
+
+Population's average fitness: 0.35574 stdev: 0.29095
+Best fitness: 1.26706 - size: (5, 42) - species 39 - id 422
+  [gen 54] train best +1.27 mean +0.36 (raw -4.80/-4.97) | val best -4.80 champion -4.60 | species 31 | best size 5n/42c | ep len 620 timeouts 0%
+           contacts/ep 1.14 returns/ep 0.29 | cancel 0.20 saturated 0.62 | pop size 5.0n/40.5c | 1.8s
+           moved/ep 21 jumps/ep 15.1 jump->hit 0.06 | at net 0.73 back 0.09
+  [budget] 12,967,120 / 15,000,000 steps (+234,667 this gen)
+Average adjusted fitness: 0.245
+Mean genetic distance 1.948, standard deviation 0.455
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.765 sec (2.230 average)
+
+ ****** Running generation 55 ****** 
+
+Population's average fitness: 0.79634 stdev: 0.46555
+Best fitness: 1.67054 - size: (3, 34) - species 49 - id 595
+  [gen 55] train best +1.67 mean +0.80 (raw -4.60/-4.97) | val best -4.75 champion -4.60 | species 31 | best size 3n/34c | ep len 620 timeouts 0%
+           contacts/ep 2.18 returns/ep 0.73 | cancel 0.21 saturated 0.63 | pop size 5.0n/40.5c | 1.7s
+           moved/ep 20 jumps/ep 15.1 jump->hit 0.11 | at net 0.79 back 0.05
+  [budget] 13,204,866 / 15,000,000 steps (+237,746 this gen)
+Average adjusted fitness: 0.445
+Mean genetic distance 1.958, standard deviation 0.452
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.724 sec (2.182 average)
+
+ ****** Running generation 56 ****** 
+
+Population's average fitness: 0.34648 stdev: 0.26426
+Best fitness: 0.86154 - size: (5, 42) - species 39 - id 422
+  [gen 56] train best +0.86 mean +0.35 (raw -4.80/-4.80) | val best -4.80 champion -4.60 | species 31 | best size 5n/42c | ep len 590 timeouts 0%
+           contacts/ep 0.83 returns/ep 0.29 | cancel 0.20 saturated 0.63 | pop size 5.0n/40.5c | 2.1s
+           moved/ep 19 jumps/ep 14.4 jump->hit 0.05 | at net 0.76 back 0.07
+  [budget] 13,432,278 / 15,000,000 steps (+227,412 this gen)
+Average adjusted fitness: 0.289
+Mean genetic distance 1.953, standard deviation 0.448
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.096 sec (2.089 average)
+
+ ****** Running generation 57 ****** 
+
+Population's average fitness: 0.80858 stdev: 0.45944
+Best fitness: 1.66136 - size: (3, 34) - species 49 - id 595
+  [gen 57] train best +1.66 mean +0.81 (raw -4.80/-4.99) | val best -4.75 champion -4.60 | species 31 | best size 3n/34c | ep len 555 timeouts 0%
+           contacts/ep 1.59 returns/ep 0.75 | cancel 0.18 saturated 0.63 | pop size 4.9n/40.5c | 2.2s
+           moved/ep 18 jumps/ep 13.4 jump->hit 0.09 | at net 0.79 back 0.05
+  [budget] 13,648,515 / 15,000,000 steps (+216,237 this gen)
+Average adjusted fitness: 0.411
+Mean genetic distance 1.956, standard deviation 0.459
+Population of 64 members in 24 species (after reproduction)
+Total extinctions: 0
+Generation time: 2.206 sec (2.091 average)
+
+ ****** Running generation 58 ****** 
+
+Population's average fitness: 0.25704 stdev: 0.24576
+Best fitness: 1.26364 - size: (3, 34) - species 49 - id 595
+  [gen 58] train best +1.26 mean +0.26 (raw -4.80/-4.99) | val best -4.80 champion -4.60 | species 24 | best size 3n/34c | ep len 539 timeouts 0%
+           contacts/ep 1.04 returns/ep 0.20 | cancel 0.19 saturated 0.62 | pop size 4.8n/40.3c | 1.7s
+           moved/ep 23 jumps/ep 12.3 jump->hit 0.07 | at net 0.74 back 0.07
+  [budget] 13,859,609 / 15,000,000 steps (+211,094 this gen)
+Average adjusted fitness: 0.162
+Mean genetic distance 1.933, standard deviation 0.432
+Population of 64 members in 27 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.648 sec (2.049 average)
+
+ ****** Running generation 59 ****** 
+
+Population's average fitness: 0.81693 stdev: 0.59764
+Best fitness: 2.08144 - size: (7, 45) - species 45 - id 667
+  [gen 59] train best +2.08 mean +0.82 (raw -4.80/-4.99) | val best -4.80 champion -4.60 | species 27 | best size 7n/45c | ep len 638 timeouts 0%
+           contacts/ep 1.99 returns/ep 0.75 | cancel 0.21 saturated 0.62 | pop size 4.8n/40.0c | 1.7s
+           moved/ep 24 jumps/ep 14.6 jump->hit 0.11 | at net 0.77 back 0.07
+  [budget] 14,101,601 / 15,000,000 steps (+241,992 this gen)
+Average adjusted fitness: 0.337
+Mean genetic distance 1.934, standard deviation 0.436
+Population of 64 members in 29 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.733 sec (2.015 average)
+
+ ****** Running generation 60 ****** 
+
+Population's average fitness: 0.60551 stdev: 0.40100
+Best fitness: 1.46788 - size: (3, 36) - species 43 - id 504
+  [gen 60] train best +1.47 mean +0.61 (raw -4.80/-4.98) | val best -4.80 champion -4.60 | species 29 | best size 3n/36c | ep len 618 timeouts 0%
+           contacts/ep 1.64 returns/ep 0.54 | cancel 0.19 saturated 0.64 | pop size 4.7n/39.8c | 1.9s
+           moved/ep 24 jumps/ep 14.0 jump->hit 0.08 | at net 0.76 back 0.09
+  [budget] 14,337,847 / 15,000,000 steps (+236,246 this gen)
+Average adjusted fitness: 0.392
+Mean genetic distance 1.931, standard deviation 0.423
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.943 sec (2.021 average)
+
+ ****** Running generation 61 ****** 
+
+Population's average fitness: 0.68286 stdev: 0.33511
+Best fitness: 1.27260 - size: (7, 43) - species 54 - id 626
+  [gen 61] train best +1.27 mean +0.68 (raw -4.40/-4.97) | val best -4.65 champion -4.60 | species 31 | best size 7n/43c | ep len 610 timeouts 0%
+           contacts/ep 1.51 returns/ep 0.62 | cancel 0.20 saturated 0.63 | pop size 4.7n/39.6c | 1.7s
+           moved/ep 20 jumps/ep 13.6 jump->hit 0.08 | at net 0.78 back 0.07
+  [budget] 14,571,490 / 15,000,000 steps (+233,643 this gen)
+Average adjusted fitness: 0.508
+Mean genetic distance 1.938, standard deviation 0.424
+Population of 64 members in 31 species (after reproduction)
+Total extinctions: 0
+Generation time: 1.722 sec (1.894 average)
+
+ ****** Running generation 62 ****** 
+
+Population's average fitness: 0.55762 stdev: 0.37744
+Best fitness: 1.47184 - size: (6, 44) - species 34 - id 699
+  [gen 62] train best +1.47 mean +0.56 (raw -4.60/-4.80) | val best -4.70 champion -4.60 | species 31 | best size 6n/44c | ep len 639 timeouts 0%
+           contacts/ep 1.38 returns/ep 0.49 | cancel 0.21 saturated 0.64 | pop size 4.8n/39.8c | 1.7s
+           moved/ep 23 jumps/ep 14.4 jump->hit 0.07 | at net 0.77 back 0.08
+  [budget] 14,813,340 / 15,000,000 steps (+241,850 this gen)
+  [budget] another generation would not fit — stopping
+  [snapshot] end: champion + gen best saved to /Users/vivandoshi/Documents/astra-takehome 3/q1_slimevolley/runs/dh_h5species_s12/snapshots/end
+
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q1_slimevolley/runs/dh_h5species_s12/
+  generations completed: 63
+  steps used:            14,813,340 / 15,000,000
+  champion: genome 581 from gen 43, val mean -4.60 over 20 games (train fitness +1.87 — shaped/biased upward, don't report it)
+  headline number: python evaluate.py --winner /Users/vivandoshi/Documents/astra-takehome 3/q1_slimevolley/runs/dh_h5species_s12/champion.pkl

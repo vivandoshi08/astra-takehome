@@ -1,0 +1,69 @@
+{
+  "argv": [
+    "evolve.py",
+    "--budget",
+    "15000000",
+    "--phase1-steps",
+    "15000000",
+    "--phase1-survival",
+    "0.3",
+    "--workers",
+    "3",
+    "--snapshot-every",
+    "5000000",
+    "--config",
+    "configs/h4_nodelete.ini",
+    "--seed",
+    "11",
+    "--run-id",
+    "dh_h4nodelete_s11"
+  ],
+  "args": {
+    "generations": 100000,
+    "budget": 15000000,
+    "workers": 3,
+    "config": "configs/h4_nodelete.ini",
+    "run_id": "dh_h4nodelete_s11",
+    "seed": 11,
+    "episodes": 5,
+    "val_top": 3,
+    "val_episodes": 20,
+    "survival_bonus": 0.0,
+    "return_bonus": 0.0,
+    "phase1_steps": 15000000,
+    "phase1_survival": 0.3,
+    "snapshot_every": 5000000,
+    "return_cap": 9
+  },
+  "git_commit": "0c4ae1872c44265174ac5873e3b47531d829ac1c-dirty",
+  "start_time": "2026-10-04T18:09:29",
+  "python": "3.11.17",
+  "neat_version": "2.0.0",
+  "seed_ranges": {
+    "train": [
+      0,
+      1000000
+    ],
+    "heldout_start": 1000000,
+    "heldout": [
+      1000000,
+      2000000
+    ],
+    "val": [
+      2000000,
+      2000020
+    ]
+  },
+  "end_time": "2026-10-04T18:12:18",
+  "generations_completed": 60,
+  "steps_used": 14398314,
+  "stopped_early": true,
+  "champion": {
+    "key": 1601,
+    "generation": 27,
+    "train_fitness": 2.27332,
+    "val_mean": -4.6,
+    "nodes": 5,
+    "conns": 28
+  }
+}
