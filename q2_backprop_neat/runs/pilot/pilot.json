@@ -1,0 +1,352 @@
+{
+  "rule": "steps s* = smallest s in STEP_GRID with Spearman rho(s, 300) >= 0.9; fraction f* = smallest f in FRACTIONS whose top-f by pre-refinement fitness holds >= 9 of the 300-step top 10; generations = 30000 // (100 f* s*). Successive halving is predicted to lose to the fixed allocation if it eliminates the 300-step best genome or >= 2 of the 300-step top 6 (late bloomers; halving keeps 6 finalists).",
+  "seed": 100,
+  "lr": 0.3,
+  "datasets": {
+    "xor": {
+      "n_genomes": 100,
+      "steps": {
+        "2": {
+          "median_fit_acc": 0.5142857142857142,
+          "median_val_acc": 0.5,
+          "median_share_of_final_gain": 0.13636363636363635,
+          "spearman_vs_300": 0.40491994495571093,
+          "top10_overlap": 0
+        },
+        "5": {
+          "median_fit_acc": 0.6321428571428571,
+          "median_val_acc": 0.5714285714285714,
+          "median_share_of_final_gain": 0.45736434108527124,
+          "spearman_vs_300": 0.5811328278800723,
+          "top10_overlap": 2
+        },
+        "6": {
+          "median_fit_acc": 0.6285714285714286,
+          "median_val_acc": 0.6071428571428572,
+          "median_share_of_final_gain": 0.4867256637168141,
+          "spearman_vs_300": 0.5408214752949986,
+          "top10_overlap": 1
+        },
+        "10": {
+          "median_fit_acc": 0.6785714285714286,
+          "median_val_acc": 0.6714285714285714,
+          "median_share_of_final_gain": 0.7176470588235293,
+          "spearman_vs_300": 0.7073661151027075,
+          "top10_overlap": 1
+        },
+        "14": {
+          "median_fit_acc": 0.6982142857142857,
+          "median_val_acc": 0.6714285714285714,
+          "median_share_of_final_gain": 0.8349514563106796,
+          "spearman_vs_300": 0.7592361494026617,
+          "top10_overlap": 2
+        },
+        "20": {
+          "median_fit_acc": 0.7303571428571428,
+          "median_val_acc": 0.7142857142857143,
+          "median_share_of_final_gain": 0.9280575539568345,
+          "spearman_vs_300": 0.8402129367229535,
+          "top10_overlap": 4
+        },
+        "30": {
+          "median_fit_acc": 0.7642857142857142,
+          "median_val_acc": 0.7642857142857142,
+          "median_share_of_final_gain": 0.9692307692307693,
+          "spearman_vs_300": 0.8672792163356798,
+          "top10_overlap": 2
+        },
+        "50": {
+          "median_fit_acc": 0.7821428571428571,
+          "median_val_acc": 0.7642857142857142,
+          "median_share_of_final_gain": 0.9846153846153847,
+          "spearman_vs_300": 0.8922270044399156,
+          "top10_overlap": 4
+        },
+        "62": {
+          "median_fit_acc": 0.7839285714285714,
+          "median_val_acc": 0.7642857142857142,
+          "median_share_of_final_gain": 0.9925373134328358,
+          "spearman_vs_300": 0.9247005385828119,
+          "top10_overlap": 4
+        },
+        "100": {
+          "median_fit_acc": 0.9107142857142857,
+          "median_val_acc": 0.9357142857142857,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 0.9514427430072705,
+          "top10_overlap": 7
+        },
+        "200": {
+          "median_fit_acc": 0.9107142857142857,
+          "median_val_acc": 0.9428571428571428,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 0.9699930468394072,
+          "top10_overlap": 8
+        },
+        "300": {
+          "median_fit_acc": 0.9142857142857143,
+          "median_val_acc": 0.9571428571428572,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 1.0,
+          "top10_overlap": 10
+        }
+      },
+      "prescreen_recall": {
+        "0.1": 0,
+        "0.25": 3,
+        "0.5": 7,
+        "1.0": 10
+      },
+      "spearman_pre_vs_300": 0.06930407915028011,
+      "halving_late_bloomers": 5,
+      "halving_keeps_best": false,
+      "halving_top6_cut_by_round": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ],
+      "prediction": {
+        "steps": 100,
+        "refine_fraction": 1.0,
+        "generations": 3,
+        "halving_predicted_to_lose": true
+      },
+      "cost": {
+        "snapshot_run_steps": 30000,
+        "curve_steps": 30000
+      }
+    },
+    "spiral": {
+      "n_genomes": 100,
+      "steps": {
+        "2": {
+          "median_fit_acc": 0.5071428571428571,
+          "median_val_acc": 0.5142857142857142,
+          "median_share_of_final_gain": 0.0,
+          "spearman_vs_300": 0.03659220810804952,
+          "top10_overlap": 0
+        },
+        "5": {
+          "median_fit_acc": 0.6017857142857143,
+          "median_val_acc": 0.6,
+          "median_share_of_final_gain": 0.5568475452196383,
+          "spearman_vs_300": 0.16146656867356454,
+          "top10_overlap": 2
+        },
+        "6": {
+          "median_fit_acc": 0.6285714285714286,
+          "median_val_acc": 0.6142857142857143,
+          "median_share_of_final_gain": 0.7538337368845844,
+          "spearman_vs_300": 0.3008445971625226,
+          "top10_overlap": 1
+        },
+        "10": {
+          "median_fit_acc": 0.6482142857142857,
+          "median_val_acc": 0.65,
+          "median_share_of_final_gain": 0.9903846153846154,
+          "spearman_vs_300": 0.016819934294336307,
+          "top10_overlap": 2
+        },
+        "14": {
+          "median_fit_acc": 0.6392857142857142,
+          "median_val_acc": 0.6357142857142857,
+          "median_share_of_final_gain": 0.8962365591397847,
+          "spearman_vs_300": 0.31025367920801644,
+          "top10_overlap": 1
+        },
+        "20": {
+          "median_fit_acc": 0.6357142857142857,
+          "median_val_acc": 0.6142857142857143,
+          "median_share_of_final_gain": 0.8681159420289857,
+          "spearman_vs_300": 0.4882641504322357,
+          "top10_overlap": 3
+        },
+        "30": {
+          "median_fit_acc": 0.6321428571428571,
+          "median_val_acc": 0.6285714285714286,
+          "median_share_of_final_gain": 0.8500000000000004,
+          "spearman_vs_300": 0.521675992797867,
+          "top10_overlap": 5
+        },
+        "50": {
+          "median_fit_acc": 0.6392857142857142,
+          "median_val_acc": 0.6428571428571429,
+          "median_share_of_final_gain": 0.9249999999999995,
+          "spearman_vs_300": 0.5849292669315093,
+          "top10_overlap": 6
+        },
+        "62": {
+          "median_fit_acc": 0.6428571428571429,
+          "median_val_acc": 0.6571428571428571,
+          "median_share_of_final_gain": 0.948333333333333,
+          "spearman_vs_300": 0.6810243178731794,
+          "top10_overlap": 8
+        },
+        "100": {
+          "median_fit_acc": 0.6464285714285715,
+          "median_val_acc": 0.6642857142857143,
+          "median_share_of_final_gain": 0.9865280289330922,
+          "spearman_vs_300": 0.7198847868314819,
+          "top10_overlap": 8
+        },
+        "200": {
+          "median_fit_acc": 0.65,
+          "median_val_acc": 0.6642857142857143,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 0.9552918586712299,
+          "top10_overlap": 9
+        },
+        "300": {
+          "median_fit_acc": 0.65,
+          "median_val_acc": 0.6642857142857143,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 1.0,
+          "top10_overlap": 10
+        }
+      },
+      "prescreen_recall": {
+        "0.1": 1,
+        "0.25": 2,
+        "0.5": 5,
+        "1.0": 10
+      },
+      "spearman_pre_vs_300": 0.07295638999305774,
+      "halving_late_bloomers": 6,
+      "halving_keeps_best": false,
+      "halving_top6_cut_by_round": [
+        0,
+        3,
+        6,
+        6,
+        6
+      ],
+      "prediction": {
+        "steps": 200,
+        "refine_fraction": 1.0,
+        "generations": 1,
+        "halving_predicted_to_lose": true
+      },
+      "cost": {
+        "snapshot_run_steps": 30000,
+        "curve_steps": 30000
+      }
+    },
+    "spiral3": {
+      "n_genomes": 100,
+      "steps": {
+        "2": {
+          "median_fit_acc": 0.5160714285714285,
+          "median_val_acc": 0.5285714285714286,
+          "median_share_of_final_gain": 0.0,
+          "spearman_vs_300": -0.02112881014325522,
+          "top10_overlap": 1
+        },
+        "5": {
+          "median_fit_acc": 0.6017857142857143,
+          "median_val_acc": 0.6285714285714286,
+          "median_share_of_final_gain": 0.6304347826086956,
+          "spearman_vs_300": 0.06804905056078223,
+          "top10_overlap": 3
+        },
+        "6": {
+          "median_fit_acc": 0.6089285714285715,
+          "median_val_acc": 0.6428571428571429,
+          "median_share_of_final_gain": 0.7352941176470589,
+          "spearman_vs_300": 0.0003060407035802375,
+          "top10_overlap": 1
+        },
+        "10": {
+          "median_fit_acc": 0.625,
+          "median_val_acc": 0.6571428571428571,
+          "median_share_of_final_gain": 0.8888888888888893,
+          "spearman_vs_300": 0.2724182317731773,
+          "top10_overlap": 3
+        },
+        "14": {
+          "median_fit_acc": 0.625,
+          "median_val_acc": 0.6571428571428571,
+          "median_share_of_final_gain": 0.9130434782608698,
+          "spearman_vs_300": 0.20975789791465102,
+          "top10_overlap": 4
+        },
+        "20": {
+          "median_fit_acc": 0.6285714285714286,
+          "median_val_acc": 0.6857142857142857,
+          "median_share_of_final_gain": 0.9666666666666668,
+          "spearman_vs_300": 0.3163440739341055,
+          "top10_overlap": 6
+        },
+        "30": {
+          "median_fit_acc": 0.6285714285714286,
+          "median_val_acc": 0.6714285714285714,
+          "median_share_of_final_gain": 0.9565217391304349,
+          "spearman_vs_300": 0.40903840233026095,
+          "top10_overlap": 7
+        },
+        "50": {
+          "median_fit_acc": 0.6357142857142857,
+          "median_val_acc": 0.6857142857142857,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 0.4002712362924036,
+          "top10_overlap": 8
+        },
+        "62": {
+          "median_fit_acc": 0.6357142857142857,
+          "median_val_acc": 0.6857142857142857,
+          "median_share_of_final_gain": 0.9848484848484849,
+          "spearman_vs_300": 0.2934210251561348,
+          "top10_overlap": 8
+        },
+        "100": {
+          "median_fit_acc": 0.6392857142857142,
+          "median_val_acc": 0.6857142857142857,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 0.317244193650518,
+          "top10_overlap": 7
+        },
+        "200": {
+          "median_fit_acc": 0.6375,
+          "median_val_acc": 0.6857142857142857,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 0.7847003655759478,
+          "top10_overlap": 9
+        },
+        "300": {
+          "median_fit_acc": 0.6357142857142857,
+          "median_val_acc": 0.6857142857142857,
+          "median_share_of_final_gain": 1.0,
+          "spearman_vs_300": 1.0,
+          "top10_overlap": 10
+        }
+      },
+      "prescreen_recall": {
+        "0.1": 2,
+        "0.25": 4,
+        "0.5": 8,
+        "1.0": 10
+      },
+      "spearman_pre_vs_300": 0.08937588704164819,
+      "halving_late_bloomers": 4,
+      "halving_keeps_best": true,
+      "halving_top6_cut_by_round": [
+        0,
+        1,
+        4,
+        4,
+        4
+      ],
+      "prediction": {
+        "steps": 300,
+        "refine_fraction": 1.0,
+        "generations": 1,
+        "halving_predicted_to_lose": true
+      },
+      "cost": {
+        "snapshot_run_steps": 30000,
+        "curve_steps": 30000
+      }
+    }
+  }
+}
