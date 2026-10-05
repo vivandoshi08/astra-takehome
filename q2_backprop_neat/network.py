@@ -4,7 +4,7 @@ This is the rig, so you don't have to reimplement genome execution before you
 can get to the actual question. It gives you:
 
     net = GenomeNetwork(genome, config)
-    logits = net.forward(X)          # (N, 2) -> (N,)
+    p      = net.forward(X)          # (N, 2) -> (N,) output-node activation
     theta  = net.get_params()        # flat float vector: weights then biases
     net.set_params(theta)            # load a vector back in
     net.write_back(genome)           # copy current params into the genome's genes
@@ -13,12 +13,27 @@ can get to the actual question. It gives you:
 differentiate through it however you like — autograd, torch, JAX, or by hand.
 
 Feed-forward genomes only (the config ships with `feed_forward = True`).
+
+Changes from the shipped rig (see audit_scaffold.py for the evidence):
+- `SigmoidOutputGenome` keeps the output node's activation at sigmoid. As
+  shipped it mutated to tanh/relu in about half of all genomes, while
+  `predict` thresholds at 0.5 and a likelihood loss needs a probability.
+- `write_back` clamps to the config's weight/bias range, the same range
+  `lower` / `upper` expose for refinement to project onto. As shipped, a value
+  past the range was stored and then snapped back on its first mutation.
+- `champion_net` rebuilds a genome's network with the parameters that earned
+  its fitness (`genome.refined_params`), so a Baldwinian champion is not
+  evaluated with the unrefined weights its genome still carries.
+
+Activations here are the plain functions (sigmoid(z), tanh(z)); neat-python's
+own `neat.nn` uses sigmoid(5z) and tanh(2.5z), so never evaluate with `neat.nn`.
 """
 
 from __future__ import annotations
 
 import math
 
+import neat
 import numpy as np
 from neat.graphs import feed_forward_layers
 
@@ -66,6 +81,14 @@ class GenomeNetwork:
             for n in self.node_keys
         }
 
+        # Per-parameter bounds, in get_params() order: the range NEAT's own
+        # mutation operators clamp to.
+        nw, nb = len(self.weights), len(self.biases)
+        self.lower = np.r_[np.full(nw, gc.weight_min_value),
+                           np.full(nb, gc.bias_min_value)]
+        self.upper = np.r_[np.full(nw, gc.weight_max_value),
+                           np.full(nb, gc.bias_max_value)]
+
     # ---- parameters -------------------------------------------------------
     @property
     def n_params(self) -> int:
@@ -81,16 +104,29 @@ class GenomeNetwork:
         k = len(self.weights)
         self.weights, self.biases = theta[:k].copy(), theta[k:].copy()
 
-    def write_back(self, genome) -> None:
-        """Copy current parameters back into the genome's genes."""
-        for k, w in zip(self.conns, self.weights):
-            genome.connections[k].weight = float(w)
-        for n, b in zip(self.node_keys, self.biases):
+    def write_back(self, genome) -> int:
+        """Copy current parameters back into the genome's genes.
+
+        Values are clamped to the config's weight/bias range. Returns how many
+        had to be clamped: anything but 0 means the genome now differs from
+        the network that was evaluated.
+        """
+        theta = self.get_params()
+        clipped = np.clip(theta, self.lower, self.upper)
+        k = len(self.weights)
+        for c, w in zip(self.conns, clipped[:k]):
+            genome.connections[c].weight = float(w)
+        for n, b in zip(self.node_keys, clipped[k:]):
             genome.nodes[n].bias = float(b)
+        return int((clipped != theta).sum())
 
     # ---- evaluation -------------------------------------------------------
     def forward(self, X: np.ndarray) -> np.ndarray:
-        """Logits for a batch of inputs. X is (N, 2); returns (N,)."""
+        """Output-node activation for a batch. X is (N, 2); returns (N,).
+
+        Not a logit: with a sigmoid output (SigmoidOutputGenome) it is
+        P(class 1), and `predict` thresholds it at 0.5.
+        """
         X = np.atleast_2d(np.asarray(X, dtype=float))
         values = {k: X[:, i] for i, k in enumerate(self.input_keys)}
         zeros = np.zeros(len(X))
@@ -109,7 +145,65 @@ class GenomeNetwork:
 
 
 def complexity(genome) -> tuple[int, int]:
-    """(node count, enabled connection count) — useful for a size penalty."""
+    """(node count, enabled connection count) — useful for a size penalty.
+
+    Counts every enabled gene, including ones that never reach the output
+    (about a third of enabled connections in a typical population).
+    """
     nodes = len(genome.nodes)
     conns = sum(1 for c in genome.connections.values() if c.enabled)
     return nodes, conns
+
+
+def champion_net(genome, config) -> GenomeNetwork:
+    """The network a genome's fitness was earned with.
+
+    If evaluation stored refined parameters on the genome
+    (`genome.refined_params`), load them; otherwise use the genome's own
+    weights. Lamarckian genomes already carry their refined weights; a
+    Baldwinian genome does not, so building it with GenomeNetwork alone would
+    test the unrefined network.
+    """
+    net = GenomeNetwork(genome, config)
+    theta = getattr(genome, "refined_params", None)
+    if theta is not None:
+        net.set_params(theta)
+    return net
+
+
+class SigmoidOutputGenome(neat.DefaultGenome):
+    """DefaultGenome whose output nodes always use sigmoid.
+
+    Hidden nodes still mutate among `activation_options`.
+    """
+
+    @staticmethod
+    def _pin_outputs(genome, config):
+        for k in config.output_keys:
+            genome.nodes[k].activation = "sigmoid"
+
+    def configure_new(self, config):
+        super().configure_new(config)
+        self._pin_outputs(self, config)
+
+    def configure_crossover(self, genome1, genome2, config):
+        super().configure_crossover(genome1, genome2, config)
+        self._pin_outputs(self, config)
+
+    def mutate(self, config):
+        super().mutate(config)
+        self._pin_outputs(self, config)
+
+
+def load_config(path) -> neat.Config:
+    """neat.Config that builds SigmoidOutputGenome genomes.
+
+    neat.Config reads the ini section named after the genome class, so parse
+    with DefaultGenome (the [DefaultGenome] section, same parameters) and then
+    swap the type: Population and reproduction create genomes through
+    config.genome_type.
+    """
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation, str(path))
+    config.genome_type = SigmoidOutputGenome
+    return config
