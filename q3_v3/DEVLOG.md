@@ -223,3 +223,40 @@ Renamed the directories to `a02` and `a03` (their `run_meta.json` still
 says `"run_id": "a02 a03"` / `"a04 a05"`; logs left as written) and
 launched a04 and a05 as two explicit commands. Each run's console output is
 kept as `console.txt`.
+
+## 2026-10-04 — group A complete (shipped loop × 5): results vs predictions
+
+`python summarize_runs.py --group a` — $1.96 for five runs ($0.37–0.42
+each); key meter $1.956 vs `spend.py` $1.98 a few minutes later (settling).
+
+| run | PUBLIC | HELD_OUT | $ |
+|---|---|---|---|
+| a01 | −0.01726 | −0.01702 | 0.40 |
+| a02 | −0.01461 | −0.01457 | 0.37 |
+| a03 | −0.02438 | −0.02541 | 0.40 |
+| a04 | −0.01780 | −0.01770 | 0.42 |
+| a05 | −0.01647 | −0.01642 | 0.38 |
+| median / spread | **−0.0173 / 0.0098** | −0.0170 / 0.0108 | |
+
+| prediction | result |
+|---|---|
+| median about −0.013 | ✗ −0.0173 — the loop sits at PCA's level (−0.0173) |
+| range −0.010 to −0.017 | ✗ −0.0146 to −0.0244 |
+| spread ≥ 0.002 | ✓ 0.0098 — one run could land anywhere from "beats PCA" to "worse than PCA by 40%" |
+| HELD_OUT within ±0.0005 of PUBLIC | ✓ 4/5; a03 ✗ (−0.0010) |
+| ≥ 85% valid, < 5% cut off | ✓ 240/240 valid, 0 cut off |
+| $0.35–0.45 per run | ✓ |
+| none past −0.0096 on HELD_OUT | ✓ |
+
+Signals for choosing group B's change:
+- **Duplicates in the prompt: none.** `dup3` = 1/12 in every run is only
+  generation 0, when the population holds just the SEED (a counting quirk in
+  my metric). Deduplication — my pre-run lean — has nothing to fix here.
+- **Answers cut off: none.** Raising MAX_TOKENS has nothing to fix.
+- **4-decimal display:** the printed best stood still in 29 generations;
+  in only 5 of them had the real best improved underneath. Mostly real
+  stagnation, not hidden progress.
+- **Where the error is** (`decompose_champions.py`, all five): encoder loss
+  0.0034–0.0133, decoder loss 0.0003–0.0027. Through its own decoder, an
+  encoder that searched would reach −0.0099 to −0.0123. And 0 of 173 logged
+  encoders draws an ellipse or iterates — every one measures once.
