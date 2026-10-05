@@ -1,0 +1,17 @@
+setting                                        PUBLIC   HELD_OUT  fresh 5+6
+shipped                                    -0.009600 -0.009680 -0.009738
+THRESHOLD=0.2                              -0.009599 -0.009682 -0.009738
+THRESHOLD=0.4                              -0.009600 -0.009683 -0.009739
+ITERS=20                                   -0.009600 -0.009680 -0.009738
+ITERS=80                                   -0.009600 -0.009680 -0.009738
+STARTS=1                                   -0.009611 -0.009698 -0.009752
+STARTS=2                                   -0.009602 -0.009679 -0.009738
+STARTS=6                                   -0.009597 -0.009677 -0.009735
+H=1e-07                                    -0.009599 -0.009680 -0.009738
+H=0.0001                                   -0.009600 -0.009680 -0.009738
+MIN_AXIS=0.1                               -0.009600 -0.009680 -0.009738
+
+seed 5: swapped fits 37/256; true a/b of those: median 1.11 (others 1.44)
+  MSE vs NOISY: swapped 0.009705, unswapped 0.009716
+  MSE vs CLEAN (denoising error): swapped 3.28e-04, unswapped 2.59e-04
+  same images refit in the a>=b branch: MSE vs noisy 0.009763, vs clean 2.52e-04; still swapped after refit 0

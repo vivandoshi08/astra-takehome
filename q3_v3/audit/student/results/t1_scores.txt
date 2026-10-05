@@ -1,0 +1,38 @@
+expected optimum -sigma^2(1-6/256) = -0.009766
+
+== graded / held-out ==
+PUBLIC                       n= 128 student -0.009600 | clean -0.009833 | per-set theory -0.009599 | student-theory -9.13e-07 | 4.2 ms/img
+HELD_OUT                     n= 256 student -0.009680 | clean -0.009933 | per-set theory -0.009699 | student-theory +1.88e-05 | 4.2 ms/img
+
+== DEVLOG dev seeds ==
+fresh seed 7                 n= 256 student -0.009738 | clean -0.009995 | per-set theory -0.009761 | student-theory +2.23e-05 | 4.2 ms/img
+fresh seed 2024              n= 256 student -0.009619 | clean -0.009866 | per-set theory -0.009632 | student-theory +1.24e-05 | 3.9 ms/img
+
+== fresh seeds never used ==
+fresh seed 3                 n= 256 student -0.009709 | clean -0.009963 | per-set theory -0.009729 | student-theory +1.97e-05 | 4.0 ms/img
+fresh seed 11                n= 256 student -0.009742 | clean -0.010000 | per-set theory -0.009765 | student-theory +2.31e-05 | 3.9 ms/img
+fresh seed 42                n= 256 student -0.009789 | clean -0.010051 | per-set theory -0.009817 | student-theory +2.77e-05 | 3.9 ms/img
+fresh seed 100               n= 256 student -0.009706 | clean -0.009968 | per-set theory -0.009734 | student-theory +2.81e-05 | 5.5 ms/img
+fresh seed 314               n= 256 student -0.009694 | clean -0.009944 | per-set theory -0.009710 | student-theory +1.62e-05 | 4.1 ms/img
+fresh seed 2718              n= 256 student -0.009760 | clean -0.010014 | per-set theory -0.009780 | student-theory +1.94e-05 | 3.9 ms/img
+fresh seed 31337             n= 256 student -0.009797 | clean -0.010037 | per-set theory -0.009803 | student-theory +6.23e-06 | 3.9 ms/img
+fresh seed 55555             n= 256 student -0.009781 | clean -0.010032 | per-set theory -0.009798 | student-theory +1.69e-05 | 4.9 ms/img
+fresh seed 8                 n= 256 student -0.009699 | clean -0.009943 | per-set theory -0.009709 | student-theory +9.49e-06 | 4.0 ms/img
+fresh seed 123456            n= 256 student -0.009714 | clean -0.009961 | per-set theory -0.009726 | student-theory +1.20e-05 | 4.0 ms/img
+fresh seeds: score mean -0.009739 (expected -0.009766); student - per-set theory: mean +1.79e-05, sd 7.28e-06, se 2.30e-06, positive in 10/10
+
+== PUBLIC transformed (same noise values, permuted; exact model-family images) ==
+flip left-right              n= 128 student -0.009599 | clean -0.009833 | per-set theory -0.009599 | student-theory -9.64e-08 | 5.4 ms/img
+flip up-down                 n= 128 student -0.009599 | clean -0.009833 | per-set theory -0.009599 | student-theory -9.35e-08 | 4.5 ms/img
+transpose                    n= 128 student -0.009599 | clean -0.009833 | per-set theory -0.009599 | student-theory -9.38e-08 | 4.5 ms/img
+rot90                        n= 128 student -0.009600 | clean -0.009833 | per-set theory -0.009599 | student-theory -9.13e-07 | 4.2 ms/img
+rot180                       n= 128 student -0.009600 | clean -0.009833 | per-set theory -0.009599 | student-theory -9.13e-07 | 4.7 ms/img
+shift dy=0 dx=1              n= 126 student -0.009607 | clean -0.009843 | per-set theory -0.009609 | student-theory +1.10e-06 | 4.1 ms/img
+                             same 126 images unshifted: -0.009608
+shift dy=1 dx=0              n= 127 student -0.009602 | clean -0.009836 | per-set theory -0.009602 | student-theory -9.67e-09 | 4.1 ms/img
+                             same 127 images unshifted: -0.009603
+shift dy=-1 dx=-1            n= 128 student -0.009601 | clean -0.009833 | per-set theory -0.009599 | student-theory -2.11e-06 | 4.1 ms/img
+                             same 128 images unshifted: -0.009600
+shift dy=2 dx=-2             n= 116 student -0.009587 | clean -0.009823 | per-set theory -0.009589 | student-theory +1.48e-06 | 4.0 ms/img
+                             same 116 images unshifted: -0.009587
+PUBLIC_CLEAN + new noise     n= 128 student -0.009678 | clean -0.009938 | per-set theory -0.009704 | student-theory +2.62e-05 | 4.2 ms/img

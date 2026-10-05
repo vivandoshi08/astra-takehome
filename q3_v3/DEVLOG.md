@@ -292,3 +292,34 @@ restarted `spend_guard.py` before adding Luna's price to `spend.py`, so it
 would have priced Luna at the "unknown model" fallback (~100× too dear) and
 stopped every run; caught before launching, restarted after the price was
 in. The guard and `spend.py` both read $5.86.
+
+## 2026-10-05 — independent check of student.py: no shortcut, three wrong claims
+
+A fresh agent tried to break `student.py` (scripts and outputs now in
+`audit/student/`). **No shortcut, leak or score-changing error**: encode
+reads only `data.IMG` and `data.render`; its output is bit-identical after
+overwriting every dataset array with garbage, under shuffled/reversed call
+orders, and across processes; it scores at the floor on 10 unused seeds and
+on flipped/rotated/shifted PUBLIC; rounding z to float32 changes nothing (no
+hidden bits); the maths (a²/4, tilt sign, least-squares brightness, θ
+period, clamp consistency, LM) checks out. Headline numbers reproduce.
+
+What it caught, all in my claims rather than the model:
+1. **Arithmetic.** −σ²(1−6/256) = −0.00977, not −0.0096. The −0.009599 /
+   −0.009699 I called "theory on that set" are clean-truth MSE − 6σ²/256.
+   AUDIT.md A3 and the docstrings corrected.
+2. **Not a bound.** A nonlinear fit (clip kinks, free axis order) soaks up
+   ~6.5 noise directions, not 6: student beats the per-set figure on
+   HELD_OUT and 10/10 fresh seeds (by ~1.8e-5). "Can do no better than"
+   was wrong; it is an approximate floor.
+3. **Misread diagnostic.** Where student beat the fit started from the true
+   parameters, 48/49 times it was a swapped-axis fit (|b| > |a|): closer to
+   the noisy image, further from the clean one. "Almost nothing is left to
+   local minima" was not shown by that comparison; against a best-of-many-
+   starts fit the real local-minimum loss is ~5e-6 (0.05%).
+
+Also fixed: `encode` raised on an all-NaN image (best_p started as None);
+a comment's interval; a reference to a report that does not exist yet; and
+a disclosure — a near-identical fit was already scored on PUBLIC/HELD_OUT in
+the audit, before `student.py` existed (no setting is PUBLIC-specific: 11
+variants land within 1.4e-5). Scores unchanged: −0.0095997 / −0.0096800.

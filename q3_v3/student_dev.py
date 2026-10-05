@@ -8,8 +8,10 @@ evaluator:
   - the clean truth (the noise floor before fitting) and the theory value for
     a perfect 6-parameter fit, -sigma^2 (1 - 6/256) = -0.00977 in expectation;
   - an "oracle-start" fit: the same Levenberg-Marquardt, started from the
-    true parameters. student minus oracle-start = error from fits that stop
-    in the wrong valley; oracle-start minus theory = noise in the sample.
+    true parameters. Caution (independent check): where student beats it,
+    it is almost always a swapped-axis fit (|b| > |a|) that matches the
+    noisy image better and the clean one worse, not an escaped local
+    minimum; the theory value is a linear-fit approximation, not a bound.
   - the worst images and their shapes (a/b, size), to see where it fails.
 """
 

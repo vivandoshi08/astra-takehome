@@ -14,7 +14,11 @@ formula. The model is analysis by synthesis:
                   numbers to shrink the squared error, repeat. Three
                   starting tilts, because the tilt of a near-circle is
                   barely visible and a single start can stall.
-               3. Return the fitted (cx, cy, a, b, theta, A).
+               3. Return the fitted (cx, cy, a, b, theta, A). In about 15-20%
+                  of images the best fit has |b| > |a| (axes swapped);
+                  render() draws that differently from (b, a, theta+pi/2),
+                  because its rim width scales with b, so z is returned raw
+                  and is not always the generator's a >= b form.
   decode(z)    Draw the ellipse with `data.render` — the generator itself.
 
 Rules: encode sees one image; decode sees only the six numbers; numpy only
@@ -23,10 +27,16 @@ nothing was fit to PUBLIC. The few settings below (threshold, iterations,
 starts) were chosen on fresh `data.train_images()` samples, never on PUBLIC
 or HELD_OUT.
 
-Where the error comes from: the per-image fit can do no better than about
--sigma^2 (1 - 6/256) = -0.0096 on average — the noise it cannot see past,
-less the share it absorbs along its six directions. What is left above
-that is fits that stop in the wrong valley; see `report.md`.
+Where the error comes from: almost all of it is the pixel noise, which no
+six numbers can predict. A linear 6-parameter fit would also absorb the
+noise along its six directions, giving -sigma^2 (1 - 6/256) = -0.00977 in
+expectation; this nonlinear fit (clip kinks, free choice of axis order)
+absorbs about 6.5 directions' worth, so that figure is an approximate
+floor, not a bound. On PUBLIC, whose noise happens to be a little below
+sigma^2, the fit scores -0.00960. Fits that stop in a worse valley cost
+about 5e-6 against a best-of-many-starts fit (an independent check; see
+q3_v3 report). A near-identical fit was first scored on PUBLIC/HELD_OUT in
+the audit (audit/math/check_floor.py, AUDIT.md A3), before this file.
 """
 
 from __future__ import annotations
@@ -108,7 +118,7 @@ def encode(img):
     """img: list of 256 floats. Return the six fitted parameters."""
     x = np.asarray(img, dtype=float)
     p0 = _first_guess(x)
-    best_p, best_cost = None, float("inf")
+    best_p, best_cost = p0, float("inf")     # p0 if every start fails (NaN input)
     for dth in STARTS:
         start = p0.copy()
         start[4] += dth
@@ -117,7 +127,7 @@ def encode(img):
             best_p, best_cost = p, cost
     p = best_p.copy()
     p[2:4] = np.maximum(np.abs(p[2:4]), MIN_AXIS)
-    p[4] = math.remainder(p[4], math.pi)                    # tilt in (-pi/2, pi/2]
+    p[4] = math.remainder(p[4], math.pi)                    # tilt in [-pi/2, pi/2]
     return [float(v) for v in p]
 
 

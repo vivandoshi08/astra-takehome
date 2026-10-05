@@ -1,0 +1,20 @@
+== parameter recovery (canonicalised to a>=b) ==
+  PUBLIC       median |err| cx 0.033 cy 0.029 a 0.054 b 0.032 theta(a/b>1.3) 1.53deg A 0.0192
+  HELD_OUT     median |err| cx 0.033 cy 0.031 a 0.051 b 0.037 theta(a/b>1.3) 1.43deg A 0.0178
+  fresh 7      median |err| cx 0.036 cy 0.032 a 0.047 b 0.031 theta(a/b>1.3) 1.65deg A 0.0175
+  fresh 2024   median |err| cx 0.029 cy 0.033 a 0.047 b 0.040 theta(a/b>1.3) 1.57deg A 0.0178
+  fresh 31     median |err| cx 0.034 cy 0.035 a 0.052 b 0.035 theta(a/b>1.3) 1.33deg A 0.0164
+
+== quantising the latent (no information hides in low-order bits) ==
+  float64 (shipped)  PUBLIC   -0.0095997
+  float64 (shipped)  HELD_OUT -0.0096800
+  float32            PUBLIC   -0.0095997
+  float32            HELD_OUT -0.0096800
+  4 decimals         PUBLIC   -0.0095997
+  4 decimals         HELD_OUT -0.0096800
+  3 decimals         PUBLIC   -0.0095998
+  3 decimals         HELD_OUT -0.0096801
+
+== dev seeds disjoint from PUBLIC/HELD_OUT ==
+  seed 7: min L1 param distance to any PUBLIC/HELD_OUT row 0.482; min squared image distance 4.458
+  seed 2024: min L1 param distance to any PUBLIC/HELD_OUT row 0.391; min squared image distance 4.812
