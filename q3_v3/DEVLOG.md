@@ -350,3 +350,15 @@ affected.
 `figures/`): student −0.0096 / −0.0097; A and C1 champions −0.0131 to
 −0.0244 on PUBLIC. A second zsh word-splitting slip of mine (a `$C` list of
 paths not split) failed the first race call; reran with globs.
+
+## 2026-10-05 — drafts; Luna runs slow; a load problem of mine
+
+`finding.md` and `report.md` drafted while b06, b07 and the five Luna runs
+finish; numbers still to come are marked [[PENDING]]. Three Luna runs did
+not move between two checks: not stuck — their candidates' encoders
+search in pure Python, and I had started `decompose_champions.py` on 15
+champions at the same time, pushing the load to ~20 on 10 cores. The
+sandbox's 180 s limit is wall-clock, so load turns slow-but-valid programs
+into timeouts: Luna 11/97 answers timed out (B 3/262, A and C1 0). Stopped
+the decomposition to free the CPU; it reruns after the paid runs. The
+timeout dependence on load goes in the report's limits.
