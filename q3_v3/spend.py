@@ -35,6 +35,10 @@ RATES = {                                   # slug: (input $/Mtok, output $/Mtok
     "anthropic/claude-sonnet-5": (2.0, 10.0),
     "anthropic/claude-opus-5": (5.0, 25.0),
     "openai/gpt-4o-mini": (0.15, 0.60),
+    "openai/gpt-4.1-mini": (0.40, 1.60),     # OpenRouter list, 2026-10-05
+    "openai/gpt-4.1": (2.0, 8.0),
+    "openai/gpt-6-luna": (0.10, 0.50),
+    "openai/gpt-5.6-luna": (0.20, 1.20),
 }
 DEFAULT_MODEL = "anthropic/claude-haiku-4.5"
 

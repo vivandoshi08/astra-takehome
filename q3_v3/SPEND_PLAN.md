@@ -99,3 +99,29 @@ helper that draws, or loops over candidate parameter values comparing errors.
 - **C2 (Sonnet):** some searching encoders (10–40%). Median about −0.013,
   better than A's; with 3 runs against 5 no rank test can be decisive
   (smallest two-sided p = 2/56 ≈ 0.036). $0.70–0.95 per run.
+
+## C2 revised: GPT-6 Luna instead of Sonnet (written before the runs)
+
+Sonnet 5 was stopped after 7 calls a run (every answer cut off by its own
+reasoning; DEVLOG). The user chose an OpenAI model instead: `openai/gpt-6-luna`
+($0.10 / $0.50 per Mtok). Probes (`runs/probe-gpt6luna`, `runs/probe-gpt41mini`):
+
+- Luna with shipped settings has Sonnet's problem: 1,996 reasoning tokens,
+  cut off, no code.
+- Luna with `EVO_REASONING=low`: 701 reasoning tokens, complete answer, and
+  on its **first** try an encoder that renders the ellipse and searches its
+  parameters (coordinate descent) — −0.00977 PUBLIC, −0.00983 HELD_OUT, no
+  suspicious imports. Unprompted.
+
+So C2 runs Luna with reasoning "low". Its clean one-change comparison is
+**C1** (Haiku, reasoning "low"): only the model differs. ~$0.001 a call, so
+five runs cost ~$0.50.
+
+| group | change | runs | est. $ |
+|---|---|---|---|
+| C2 | `EVO_MODEL=openai/gpt-6-luna EVO_REASONING=low` | 5 | ~0.50 |
+
+**Predictions (C2):** most answers (> 50%) from generation 1 on have a
+searching encoder. Champion median ≤ −0.0100; all five better than all five
+C1 champions (rank test p ≈ 0.008). HELD_OUT within ±0.0003 of PUBLIC.
+5–20% of answers cut off (reasoning length varies). $0.05–0.15 per run.

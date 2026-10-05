@@ -27,8 +27,7 @@ from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).parent
-RATES = {"anthropic/claude-haiku-4.5": (1.0, 5.0),
-         "anthropic/claude-sonnet-5": (2.0, 10.0)}
+from spend import RATES  # one price table
 
 
 def jsonl(p: Path):

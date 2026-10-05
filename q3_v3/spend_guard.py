@@ -24,6 +24,7 @@ import spend
 
 HERE = Path(__file__).parent
 PATTERN = "evo.loop --client llm"
+UNKNOWN_RATE = (15.0, 60.0)   # $/Mtok, above any model we would use
 
 
 def total_spend() -> float:
@@ -34,7 +35,8 @@ def total_spend() -> float:
             m = spend.model_of(c.get("tag", ""), spend.DEFAULT_MODEL)
             if m == "mock":
                 continue
-            rin, rout = spend.RATES[m]
+            # an unknown model must not crash the guard: assume it is dear
+            rin, rout = spend.RATES.get(m, UNKNOWN_RATE)
             total += c["input_tokens"] / 1e6 * rin + c["output_tokens"] / 1e6 * rout
     return total
 

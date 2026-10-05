@@ -278,3 +278,17 @@ So the README's "Sonnet 5 is about $0.80 a run" does not hold with the
 shipped client: as shipped, a Sonnet run produces no programs at all.
 Running it would need reasoning turned off or a larger MAX_TOKENS — a
 decision for the user, not taken here. B and C1 continue.
+
+**Replacing Sonnet** (user's call: an OpenAI model, then specifically GPT
+Luna). Checked OpenRouter's list first (free): OpenAI's reasoning models
+would hit the same cut-off. Probed `gpt-4.1-mini` (non-reasoning, $0.003:
+fine, −0.056/−0.022) before the user picked Luna; kept as a record. Probed
+`gpt-6-luna` ($0.002): as shipped, cut off by 1,996 reasoning tokens; with
+reasoning "low", a complete answer that **searches** — moments start, then
+coordinate descent through its own renderer, least-squares brightness —
+scoring −0.00977 PUBLIC / −0.00983 HELD_OUT on its first attempt, no hint.
+Haiku's 173 encoders never did this. A guard slip of mine on the way: I
+restarted `spend_guard.py` before adding Luna's price to `spend.py`, so it
+would have priced Luna at the "unknown model" fallback (~100× too dear) and
+stopped every run; caught before launching, restarted after the price was
+in. The guard and `spend.py` both read $5.86.

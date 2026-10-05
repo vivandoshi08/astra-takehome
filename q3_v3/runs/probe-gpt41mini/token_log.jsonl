@@ -1,0 +1,2 @@
+{"call": 1, "tag": "openrouter:openai/gpt-4.1-mini|probe-default", "input_tokens": 1176, "output_tokens": 750, "cumulative": 1926, "wall_ts": 1791181695.214545}
+{"call": 2, "tag": "openrouter:openai/gpt-4.1-mini|probe-reasoning-low", "input_tokens": 1176, "output_tokens": 802, "cumulative": 3904, "wall_ts": 1791181702.1269388}

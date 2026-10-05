@@ -1,0 +1,2 @@
+{"call": 1, "tag": "openrouter:openai/gpt-6-luna|probe-default", "input_tokens": 1175, "output_tokens": 2048, "cumulative": 3223, "wall_ts": 1791181749.041676}
+{"call": 2, "tag": "openrouter:openai/gpt-6-luna|probe-reasoning-low", "input_tokens": 1175, "output_tokens": 1720, "cumulative": 6118, "wall_ts": 1791181767.7254632}
