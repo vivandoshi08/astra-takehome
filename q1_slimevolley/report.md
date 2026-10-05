@@ -211,6 +211,17 @@ Watched across 10M snapshots, on the same held-out game each time:
    - Snapshot labels collided below 10M, and the 20M snapshot was skipped because runs
      stop just short of round numbers.
    - The replay cut games off at 1400 steps (seed 2 showed −1 instead of −3).
+8. **A run died silently.** One run in the hypothesis experiment below stopped at 14.4M
+   with no final outputs and no error anywhere.
+   - `evolve.py` only caught budget stops and Ctrl-C, and the experiment script sent
+     stderr to `/dev/null`.
+   - Reproducing it with stderr kept showed neat's `RuntimeError`: that arm's config
+     made 33 species × 2 minimum > population 64.
+   - Fix: any exception is now recorded in `stdout.log` and `run_args.json`, every output
+     is still written, and the process exits 1. Tested with a deliberately broken
+     config.
+   - Side result: the rerun was byte-identical to the original even though it used 9
+     workers instead of 3.
 
 ## Replication, and anything surprising
 
@@ -231,13 +242,47 @@ Watched across 10M snapshots, on the same held-out game each time:
   - I fixed seed 0 as the headline *before* seeing seeds 1–2, so selection on held-out
     cannot have inflated it. But one success in three is the honest description of the
     method.
-  - The obvious next step (not done, for time) is making the discovery likely: more
-    seeds, a larger population early on, or restarting stuck runs. Run dirs:
-    `runs/full100m_curriculum_s{1,2}`.
+  - Run dirs: `runs/full100m_curriculum_s{1,2}`.
+- **Why seed 0 escaped and others didn't: five hypotheses, one test each.** Free checks
+  on existing logs first:
+  - Seed 0's ball-tracking weight grew 3.5 → 8.6 → 10.8 at 10/20/30M while its
+    validation climbed. In seeds 1–2 that weight never exceeded ~2.
+  - Seed 0 was the only one of seeds 0–2 whose generation-0 population had a tracking
+    weight above 2.5.
+  - Seeds 1–2's generation-best kept only 55–59% of its fitness when re-scored the next
+    generation; seed 0's kept 88%.
+
+  Then one arm per hypothesis, each a single change, phase 1 only, 15M steps, on fresh
+  seeds 10–12 shared by all arms (`experiments/`; table in
+  [discovery_results.md](experiments/discovery_results.md)):
+
+  | hypothesis (change) | escaped | best phase-1 fitness (seed 0 at 15M: 8.8) |
+  |---|---|---|
+  | control | 0/3 | 2.7–3.9 |
+  | H1 weights too small (init stdev 1→3, mutation 0.5→1.0) | 0/3 | 2.9–3.9 |
+  | H2 too few genomes (pop 64→192) | 0/3 | 2.5–2.7 |
+  | H3 evaluation noise (10 games per genome) | 0/3 | 2.0–2.1 |
+  | H4 deletion drift (delete prob → 0.05) | 0/3 | 2.7–3.3 |
+  | H5 lost diversity (compatibility 2.0→1.0) | 0/2, 1 crashed | 2.5–3.1 |
+
+  None helped. What each showed:
+  - **H1:** the most informative failure. Wide weights *did* produce tracking weights as
+    large as seed 0's (7.8, 11.2, 17.9) with no chasing, so a large weight is not
+    sufficient; the right combination of signs and weights is what is rare.
+  - **H5:** already contradicted by the logs (seed 0 had fewer species: 3.2 vs 4.6).
+  - **Initialisation:** seeds 11 and 12 also started with a tracking weight above 2.5
+    and still didn't escape.
+
+  **Conclusion:** escaping the net camper is a rare event, roughly 1 in 20 seed-runs by
+  15M, and no single setting I tried changes that. Three seeds per arm cannot detect a
+  modest improvement, so I report these as "no large effect", not "no effect".
+  Untried: a denser phase-0 objective (contacts, which `pipeline_test.py` showed
+  climbing, though only on seed 0), and portfolio restarts within one budget, which only
+  pay off if escape odds are not this low.
 - **Timeouts are normal for competent play:** the built-in policy playing against itself
   reaches the 3000-step limit in every game. Any "stalling" detector needs that
   baseline.
 - **Population mean stays near −4.5 even when the best is about 0.** In this space,
   mutation is mostly destructive near good genomes.
-- **Time:** about 2 h of session time (16:08 → 18:00 by commit timestamps). The live walkthrough could take any commit;
+- **Time:** about 2.5 h of session time (16:08 → 18:35 by commit timestamps). The live walkthrough could take any commit;
   `git log` shows the order things were found.
