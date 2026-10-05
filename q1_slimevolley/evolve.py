@@ -31,6 +31,15 @@ too weak (~0.7% of fitness variance) and raw contacts don't track score
 (r = 0.05; a genome can juggle on its own side and still lose 5-0), whereas
 returning the ball is the thing that has to happen before any point is won.
 
+--phase1-steps N runs a curriculum: until N steps are spent, selection uses
+returns + B1 * steps/3000 (B1 = --phase1-survival) with no score term at all,
+because per-game score swings by whole points with the serve and drowns small
+behavioural differences (pipeline_test.py: returns-only fitness climbs, score-
+based fitness does not). After N steps it switches to the score-based fitness
+above. At the switch, NEAT's per-species stagnation history is reset — the
+fitness scale changes, so every species would otherwise look stagnant and be
+culled. Champion selection is raw validation score in both phases.
+
 Writes to runs/<run-id>/ — see LOGS.md for every file and column.
 """
 
@@ -74,6 +83,7 @@ HISTORY_COLUMNS = [
     "mean_nodes", "mean_conns", "mean_contacts", "mean_returns",
     "best_raw_contacts", "mean_cancel", "mean_sat", "gen_seconds",
     "mean_moved", "mean_jumps", "jump_hit_rate", "zone_net_frac", "zone_back_frac",
+    "phase",
 ]
 ACT_KEYS = ("act_fwd", "act_back", "act_jump", "act_idle", "act_both")
 
@@ -154,8 +164,10 @@ def _eval_one(job: tuple[bytes, list[int]]) -> list[dict]:
         _W["budget"].flush()
 
 
-def selection_fitness(ep: dict, args) -> float:
+def selection_fitness(ep: dict, args, phase: int = 2) -> float:
     """Per-episode fitness used for selection only (raw score + shaping)."""
+    if phase == 1:
+        return ep["returns"] + args.phase1_survival * ep["steps"] / 3000
     return (ep["score"] + args.survival_bonus * ep["steps"] / 3000
             + args.return_bonus * min(ep["returns"], args.return_cap))
 
@@ -188,6 +200,7 @@ class RunRecorder(neat.reporting.BaseReporter):
         self.snapshot_every = snapshot_every
         self.next_snapshot = snapshot_every
         self.validated_genomes: dict = {}           # key -> genome, this gen's validated
+        self.phase = 2                              # curriculum phase of this generation
         self.history: list[list] = []
         self.episodes: dict[int, list[dict]] = {}  # genome key -> this gen's episodes
         self.validated: list[dict] = []             # this gen's validation rows
@@ -222,7 +235,7 @@ class RunRecorder(neat.reporting.BaseReporter):
                 fh.write(json.dumps({
                     "gen": gen, "key": g.key,
                     "species": species.get_species_id(g.key),
-                    "nodes": nodes, "conns": conns, "fitness": g.fitness,
+                    "nodes": nodes, "conns": conns, "fitness": g.fitness, "phase": self.phase,
                     "raw_fitness": statistics.mean(e["score"] for e in eps),
                     "scores": [e["score"] for e in eps],
                     "steps": [e["steps"] for e in eps],
@@ -266,6 +279,7 @@ class RunRecorder(neat.reporting.BaseReporter):
             sum(e["jump_hits"] for e in all_eps) / max(1, sum(e["jumps"] for e in all_eps)),
             sum(e["zone_net"] for e in all_eps) / all_steps,
             sum(e["zone_back"] for e in all_eps) / all_steps,
+            self.phase,
         ])
         self._last_time = now
         self.write_outputs()
@@ -382,6 +396,10 @@ def main() -> int:
                     help="selection fitness per episode += B * steps/3000 (B < 1)")
     ap.add_argument("--return-bonus", type=float, default=0.0,
                     help="selection fitness per episode += R * min(returns, cap)")
+    ap.add_argument("--phase1-steps", type=int, default=0,
+                    help="curriculum: select on returns (no score) until this many steps, then on score")
+    ap.add_argument("--phase1-survival", type=float, default=0.3,
+                    help="phase-1 fitness per episode = returns + this * steps/3000")
     ap.add_argument("--snapshot-every", type=int, default=10_000_000,
                     help="save champion + generation best every N steps (0 = off); see replay_snapshots.py")
     ap.add_argument("--return-cap", type=int, default=9,
@@ -429,11 +447,19 @@ def main() -> int:
 
     def evaluate(genomes, cfg):
         nonlocal generation
+        phase = 1 if total_steps(recorder.budget_log) < args.phase1_steps else 2
+        if phase != recorder.phase and generation > 0:
+            print(f"  [curriculum] phase {recorder.phase} -> {phase} at gen {generation}: "
+                  f"resetting species stagnation history", flush=True)
+            for sp in pop.species.species.values():
+                sp.fitness_history = []
+                sp.last_improved = pop.generation
+        recorder.phase = phase
         seeds = train_seeds(args.seed, generation, args.episodes)
         results = play_all(pool, [g for _, g in genomes], seeds)
         recorder.episodes = {}
         for (_, genome), eps in zip(genomes, results):
-            genome.fitness = statistics.mean(selection_fitness(e, args) for e in eps)
+            genome.fitness = statistics.mean(selection_fitness(e, args, phase) for e in eps)
             recorder.episodes[genome.key] = eps
 
         top = sorted((g for _, g in genomes), key=lambda g: g.fitness, reverse=True)[:args.val_top]

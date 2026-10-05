@@ -9,7 +9,7 @@ Every run writes enough to re-derive every number in the report.
 | `stdout.log` | run | everything printed, incl. NEAT's species / stagnation / extinction report |
 | `budget_log.jsonl` | flush | scaffold step accounting (do not edit) |
 | `fitness_history.csv` | generation | see columns below |
-| `genomes.jsonl` | genome per generation | `gen, key, species, nodes, conns, fitness, raw_fitness, scores[], steps[], points_for[], points_against[], timeouts, act_fwd, act_back, act_jump, act_idle, act_both, out_sat, contacts[], opp_contacts[], returns[], moved[], jumps[], jump_hits[], zone_net, zone_mid, zone_back` |
+| `genomes.jsonl` | genome per generation | `gen, key, species, nodes, conns, fitness, phase, raw_fitness, scores[], steps[], points_for[], points_against[], timeouts, act_fwd, act_back, act_jump, act_idle, act_both, out_sat, contacts[], opp_contacts[], returns[], moved[], jumps[], jump_hits[], zone_net, zone_mid, zone_back` |
 | `validation.jsonl` | validated genome per generation | `gen, key, train_fitness, val_mean, val_scores[], val_steps[]`, plus `val_`-prefixed versions of the genomes.jsonl episode aggregates (`val_contacts[]`, `val_act_jump`, ...) |
 | `champion.pkl` | run | genome with the best **validation** mean (not training fitness) |
 | `snapshots/<N>M/` | every `--snapshot-every` steps (10M) | `champion.pkl/json` (best val so far) and `gen_best.pkl/json` (that generation's best validated genome); `replay_snapshots.py` turns them into `snapshots/progress.md` + GIFs on fixed held-out seeds |
@@ -19,7 +19,11 @@ Every run writes enough to re-derive every number in the report.
 then `median_fitness, std_fitness, min_fitness, n_species, best_nodes, best_conns,
 mean_ep_steps, timeout_frac, gen_steps, cum_steps, val_best, champion_val, best_raw, mean_raw, mean_nodes, mean_conns, mean_contacts,
 mean_returns, best_raw_contacts, mean_cancel, mean_sat, gen_seconds, mean_moved,
-mean_jumps, jump_hit_rate, zone_net_frac, zone_back_frac`.
+mean_jumps, jump_hit_rate, zone_net_frac, zone_back_frac, phase`.
+
+Curriculum (`--phase1-steps N`): rows with `phase == 1` have
+`fitness == mean(returns + B1*steps/3000)` (B1 = `--phase1-survival`), no score term;
+`phase == 2` rows use the score-based formula above.
 
 `fitness` / `best_fitness` / `mean_fitness` are the *selection* fitness: with
 `--survival-bonus B` (in run_args) each episode counts `score + B*steps/3000`, so

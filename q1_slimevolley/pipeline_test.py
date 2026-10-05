@@ -32,6 +32,6 @@ if __name__ == "__main__":
     objective = argv[i + 1]
     del argv[i:i + 2]
     # Fitness is computed in the driver process, so patching here is enough.
-    evolve.selection_fitness = lambda ep, args: OBJECTIVES[objective](ep)
+    evolve.selection_fitness = lambda ep, args, phase=2: OBJECTIVES[objective](ep)
     sys.argv = ["evolve.py", *argv]
     raise SystemExit(evolve.main())

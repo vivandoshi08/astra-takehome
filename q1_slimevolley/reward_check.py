@@ -31,6 +31,7 @@ FORMULAS = [
     ("B=0.5", 0.5, 0.0, 0),
     ("R=0.1,C=9", 0.0, 0.1, 9),
     ("B=0.3,R=0.07,C=9", 0.3, 0.07, 9),
+    ("phase1 (no score)", None, None, None),  # curriculum phase 1: returns + 0.3*steps/3000
 ]
 
 
@@ -80,7 +81,9 @@ class BuiltIn:
         return [0.9 if a else 0.1 for a in self.p.predict(obs)]
 
 
-def shaped(ep: dict, b: float, r: float, c: int) -> float:
+def shaped(ep: dict, b, r, c) -> float:
+    if b is None:  # curriculum phase 1 (evolve.selection_fitness, phase=1)
+        return ep["returns"] + 0.3 * ep["steps"] / 3000
     return ep["score"] + b * ep["steps"] / 3000 + r * min(ep["returns"], c)
 
 

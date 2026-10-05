@@ -271,6 +271,11 @@ class Run:
         c = find_key(self.args or {}, ("return_cap",))
         return int(c) if isinstance(c, (int, float)) else None
 
+    def phase1_survival(self):
+        """Curriculum phase-1 survival weight (--phase1-survival); missing = 0.3 default."""
+        b = find_key(self.args or {}, ("phase1_survival",))
+        return float(b) if isinstance(b, (int, float)) else 0.3
+
     def worker_cap(self):
         """Per-process step cap the scaffold enforces: budget // workers."""
         budget = find_key(self.args or {}, ("budget",))
@@ -549,7 +554,12 @@ def check_fitness(run: Run, rep: Report):
         if sc:
             if R and "returns" not in g:
                 no_returns += 1
-            want = selection_fitness(sc, g.get("steps", [0] * len(sc)), B, g.get("returns"), R, run.return_cap())
+            if g.get("phase") == 1:  # curriculum: returns + B1*steps/3000, no score
+                want = mean([r + run.phase1_survival() * t / EPISODE_STEP_LIMIT
+                             for r, t in zip(g["returns"], g["steps"])])
+            else:
+                want = selection_fitness(sc, g.get("steps", [0] * len(sc)), B, g.get("returns"), R,
+                                         run.return_cap())
             if abs(g["fitness"] - want) > TOL_EXACT:
                 bad_mean.append((tag, g["fitness"], want))
             if has_raw and abs(g["raw_fitness"] - mean(sc)) > TOL_EXACT:
