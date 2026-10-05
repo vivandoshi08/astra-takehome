@@ -1,7 +1,7 @@
 # Q2 — Backprop-NEAT under a compute budget
 
-*Working draft (commit after `ef2763e`). Sections 6–7 are placeholders: the
-small-network track and the figures are in progress. Every number comes
+*Working draft. Section 6 is a placeholder: the small-network track is in
+progress. Every number comes
 from the committed file named beside it; where I derived a number while
 writing (a sum or mean over a committed `results.csv` or
 `fitness_history.csv`), I say so.*
@@ -248,6 +248,15 @@ Baldwinian refined 387,000 genome evaluations and changed 0 genomes;
 Lamarckian refined 368,700 and changed 368,700 (derived by summing
 `n_genome_changed` and `n_refined` over `runs/allocation/*/*/fitness_history.csv`).
 
+The population shows it too (`figures/inheritance_signature.png`): at the
+same allocation (10 steps x 100%), the Lamarckian population's own
+pre-refinement accuracy climbs over 30 generations to 0.79 / 0.68 / 0.62
+(median of 10 seeds; xor / spiral / spiral3), while the Baldwinian
+population's stays at 0.52 / 0.50 / 0.52 the whole time even as its
+post-refinement accuracy rises. Under Baldwinian, selection acts only on
+how well a genome learns; its raw weights never improve, and nothing of
+what is learned is assimilated into the genome within 30 generations.
+
 **The difference to explain.** At equal allocation (A), Lamarckian −
 Baldwinian held-out:
 
@@ -367,11 +376,50 @@ at 5.0 connections, spiral 0.855 at 5.8 (linear λ = 0.01).
 
 ## 7. Decision boundaries (deliverable 6)
 
-**TODO(figures)**: in progress. `viz.py` draws a champion through
-`champion_net()`, so Baldwinian boundaries use the refined weights (the
-scaffold drew them with unrefined ones, AUDIT #1). The question the plots
-must answer is whether 0.90 on spiral is a spiral or a better corner cut,
-since a corner cut alone scores about 0.75 here (AUDIT.md).
+`figures/` (regenerate with `python experiments/make_figures.py`; per-figure
+readings with the seeds each claim covers are in `figures/README.md`).
+Champions are drawn through `champion_net()`, so Baldwinian boundaries use
+the refined weights that earned their fitness (the scaffold drew unrefined
+ones, AUDIT #1); the recomputed held-out accuracy of all 69 plotted
+champions matches their `summary.json`. The representative panel is the
+lower-median seed of 10; `seeds_*.png` show all 10 seeds unsorted, so
+nothing below is cherry-picked. The question the plots answer is whether a
+spiral score is a spiral, since a single cut already scores ~0.75 here.
+
+![xor](figures/representative_xor.png)
+![spiral](figures/representative_spiral.png)
+![spiral3](figures/representative_spiral3.png)
+![accuracy by radius](figures/radius_accuracy.png)
+
+- **xor — right shape.** All 10 Lamarckian champions split the plane into
+  four quadrants along the axes (0.960–0.980; Bayes 0.984). 7/10 Baldwinian
+  do; the other 3 (s1, s7, s9) cut one blob off with a diagonal — the wrong
+  orientation, still 0.933–0.953. Plain NEAT draws one cut around one blob
+  (0.687–0.713). Off the data the quadrants break down (`wide_view.png`);
+  held-out data never tests that.
+- **spiral — partly a spiral.** Plain NEAT is one near-vertical cut
+  (0.69–0.79). 6/10 Lamarckian champions curl a class-1 tongue into the
+  inner arm (inner-third accuracy 0.76–0.94, scores 0.913–0.980); the other
+  4 are corners or boxes that score 0.800–0.867 while getting the inner
+  third at or below its majority rate — right score, wrong shape.
+  Baldwinian: 3 curl, 3 vertical stripes, 4 boxes.
+- **spiral3 — mostly not a spiral.** 16 of 20 refined champions are at or
+  below the majority rate on the inner third (the inner 0.86 revolutions).
+  Their 0.67–0.87 comes from boxes, U-shapes and stripes that fit the outer
+  turns, where most points sit (point density grows with radius). One
+  Lamarckian champion (s5, 0.953) winds with the inner arm. The median
+  Lamarckian champion (s6, 0.800) is axis-aligned boxes and stripes.
+- **Across both spirals** no champion changes label along a ray from the
+  centre as often as the data do (at most 1.87 flips per ray against 2.43
+  for a 5-NN classifier).
+
+What the shapes say: held-out accuracy on these spirals mostly rewards
+fitting the dense outer turns, and ~0.80 is reachable without learning the
+spiral. Refinement and Lamarckian inheritance raise accuracy there; only on
+spiral does Lamarckian refinement reliably start winding inward
+(inner-third median 0.77, Baldwinian 0.69, plain NEAT 0.60). The champions
+are small (8–12 connections), which is consistent with the frontier: on the
+spirals every connection is still paying for itself.
 
 ## 8. What went wrong, and how I found it (deliverable 7)
 
@@ -457,7 +505,11 @@ runs read `-dirty` while a parallel agent wrote untracked files, and the
 harness's code fingerprint shows the code was identical for all 480;
 refinement collapses 80% of hidden-node plain-NEAT xor genomes to p = 0.5
 (DEVLOG, "Surprises") — xor still reaches 0.96–0.98, so I noted it and did
-not chase it.
+not chase it; relatedly, under Baldwinian B the 100 Adam steps *lower* the
+mean fit accuracy of the genomes they refine in 110 / 83 / 227 of 300
+seed-generation cells (xor / spiral / spiral3; the A arms 0–9), because they
+minimise cross-entropy, not accuracy (found by the figures agent; not
+investigated further).
 
 ## 9. Time and process
 
@@ -486,8 +538,9 @@ reading of results, and delegated build pieces to agents, re-running and
 reviewing each before committing: the gradient engine and lr probe
 (`eb68b6f`; my review found item 4), the harness (`3372a86`; 27/27 harness
 tests and 12/12 demo-grid cells re-run against the new `main.py`), the
-small-network machinery (TODO), the figures (TODO), and the first draft of
-this report (which found item 7). The agents found real bugs (DEVLOG #3–#7,
+small-network machinery (TODO), the figures (I checked the representative,
+by-radius and inheritance plots against the agent's readings before using
+them), and the first draft of this report (which found item 7). The agents found real bugs (DEVLOG #3–#7,
 #10, #11). `test_gradients.py`, `test_scaffold_fixes.py` and `test_main.py`
 all print `all checks passed`.
 
