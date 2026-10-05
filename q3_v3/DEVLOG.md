@@ -191,3 +191,21 @@ each on its own training set, PUBLIC and HELD_OUT. Predictions:
   −0.0135 measured for 2048 images in the audit; noise fraction on the
   training set falls toward 0.02.
 - No model beats −0.0096 on images it was not trained on.
+
+**VAE control results** (`vae_verdict.py`, 66 s):
+
+| same recipe, trained on | own train | PUBLIC | HELD_OUT | noise copied: train / HELD_OUT |
+|---|---|---|---|---|
+| PUBLIC (shipped) | −0.0051 | −0.0051 | −0.0346 | 0.588 / 0.024 |
+| fresh 128 | −0.0049 | −0.0345 | −0.0344 | 0.595 / 0.022 |
+| fresh 512 | −0.0103 | −0.0174 | −0.0171 | 0.171 / 0.025 |
+| fresh 2048 | −0.0113 | −0.0144 | −0.0143 | 0.059 / 0.023 |
+
+Predictions met: the recipe scores ~−0.005 on whichever 128 images it
+trained on and ~−0.035 on everything else; it copies ~60% of its training
+images' noise and ~2% (the honest 6/256) of anything else's; with more
+training images the gap closes. Not predicted: at 2048 images, 4000 epochs
+(−0.0144 on PUBLIC) is worse than the audit's 1000 epochs (−0.0136) —
+longer training still overfits. No model beats the honest optimum on images
+it did not train on. (The script prints the *expected* optimum, −0.00977;
+PUBLIC's own noise happens to be a little lower, hence −0.0096 there.)
