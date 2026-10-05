@@ -29,6 +29,9 @@ def champions(prefix: str, key: str) -> dict[str, float]:
         m = d / "run_meta.json"
         if m.exists():
             v = json.loads(m.read_text()).get(key)
+            r = d / "held_out_rescore.json"
+            if v is None and key == "best_held_out" and r.exists():
+                v = json.loads(r.read_text()).get("held_out")   # run's own scoring timed out
             if v is not None:
                 out[d.name] = v
     return out

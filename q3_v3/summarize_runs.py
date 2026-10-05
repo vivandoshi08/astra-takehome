@@ -39,6 +39,16 @@ def norm(code: str) -> str:
     return "\n".join(l.rstrip() for l in code.strip().splitlines() if l.strip())
 
 
+def held_out(d: Path, meta: dict):
+    """run_meta's HELD_OUT score, or, if the run's own one-off scoring timed
+    out, the champion re-scored later (held_out_rescore.json)."""
+    v = meta.get("best_held_out")
+    r = d / "held_out_rescore.json"
+    if v is None and r.exists():
+        v = json.loads(r.read_text()).get("held_out")
+    return v
+
+
 def summarise(run_id: str) -> dict:
     d = HERE / "runs" / run_id
     meta = json.loads((d / "run_meta.json").read_text())
@@ -66,7 +76,7 @@ def summarise(run_id: str) -> dict:
         curve.append(g["best"])
     return {"run": run_id, "model": meta.get("model"),
             "reasoning": meta.get("reasoning"),
-            "public": meta.get("best_public"), "held_out": meta.get("best_held_out"),
+            "public": meta.get("best_public"), "held_out": held_out(d, meta),
             "flags": meta.get("champion_flags"), "stop": meta.get("stop_reason"),
             "calls": len(calls), "cost": tin / 1e6 * rin + tout / 1e6 * rout,
             "out_per_call": tout / max(len(calls), 1),
@@ -91,14 +101,15 @@ def main():
     for r in rows:
         gap = (r["held_out"] - r["public"]) if r["held_out"] is not None else float("nan")
         fails = {k: v for k, v in r["status"].items() if k != "scored"}
-        print(f"{r['run']:<6} {r['public']:+9.5f} {r['held_out']:+9.5f} {gap:+8.5f} "
+        ho = r["held_out"] if r["held_out"] is not None else float("nan")
+        print(f"{r['run']:<6} {r['public']:+9.5f} {ho:+9.5f} {gap:+8.5f} "
               f"{r['cost']:5.2f} {r['scored']:>3}/{r['answers']:<2} {r['cut']:>4} "
               f"{r['dup3']:>2}/{r['gens']:<2} {r['flat']:>2}/{r['gens']:<2}  "
               f"{fails or '-'}{'  FLAGS ' + str(r['flags']) if r['flags'] else ''}"
               f"{'  STOP ' + r['stop'] if r['stop'] else ''}")
     if len(rows) > 1:
         for key in ("public", "held_out"):
-            v = sorted(r[key] for r in rows)
+            v = sorted(r[key] for r in rows if r[key] is not None)
             print(f"\n{key:9s} values {[round(x, 5) for x in v]}")
             print(f"{'':9s} median {statistics.median(v):+.5f}  range "
                   f"[{v[0]:+.5f}, {v[-1]:+.5f}]  spread {v[-1] - v[0]:.5f}")

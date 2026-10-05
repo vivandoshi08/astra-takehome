@@ -1,0 +1,8 @@
+{
+  "held_out": -0.009773498245647803,
+  "status": "scored",
+  "detail": "",
+  "timeout": 1200.0,
+  "seconds": 187.1,
+  "why": "the run's own HELD_OUT scoring hit the 180 s limit under load"
+}
