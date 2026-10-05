@@ -188,6 +188,18 @@ def test_penalty(tmp):
                         "--strategy", "baldwinian", "--lr", LR, "--penalty", "0.01")
     check("fitness = acc - 0.01 * conns",
           rows and all(abs(x["fitness"] - (x["acc"] - 0.01 * x["conns"])) < 1e-12 for x in rows))
+    _, s2, rows2, _ = run(tmp, "pen_champ", "--dataset", "spiral", "--steps", "5",
+                          "--generations", "6", "--strategy", "baldwinian", "--lr", LR,
+                          "--penalty", "0.02")
+    gen_best = {}
+    for x in rows2:
+        b_ = gen_best.get(x["gen"])
+        if b_ is None or (x["fitness"], -x["loss"], -x["key"]) > (b_["fitness"], -b_["loss"], -b_["key"]):
+            gen_best[x["gen"]] = x
+    keyf = lambda x: (x["val_acc"] - 0.02 * x["conns"], x["fitness"])
+    want = max(sorted(gen_best), key=lambda g: (keyf(gen_best[g]), -g))
+    check("with a penalty, the champion maximises penalised validation accuracy",
+          s2 and s2["champion_generation"] == want, f"generation {s2 and s2['champion_generation']}, expected {want}")
     check("penalty forms", abs(driver.penalised(0.9, 4, 0.1, "sqrt") - 0.7) < 1e-12
           and abs(driver.penalised(0.9, 4, 0.1, "mult") - (1 - 0.1 * 1.2)) < 1e-12)
 

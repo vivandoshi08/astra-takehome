@@ -192,6 +192,7 @@ class Evaluator:
         self.history: list[dict] = []
         self.champion = None          # chosen on validation accuracy
         self.champion_key = (float("-inf"), float("-inf"))
+        self.champion_val = float("nan")
         self.champion_gen = None
         self.trainbest = None         # chosen on fitness, for comparison
         self.trainbest_fitness = float("-inf")
@@ -270,11 +271,17 @@ class Evaluator:
             self.trainbest = copy.deepcopy(best.genome)
         if len(self.X_val):
             best.val_acc = best.net.accuracy(self.X_val, self.y_val)
-            key = (best.val_acc, best.fitness)
+            # The same objective fitness uses: with a penalty, the champion is
+            # the candidate with the best penalised validation accuracy, so
+            # selection cannot undo the size pressure. Identical to raw
+            # validation accuracy when --penalty is 0.
+            key = (penalised(best.val_acc, best.conns, self.args.penalty,
+                             self.args.penalty_form), best.fitness)
         else:
             key = (best.fitness, best.fitness)
         if key > self.champion_key:  # strict: ties keep the earlier champion
             self.champion_key = key
+            self.champion_val = best.val_acc
             self.champion = copy.deepcopy(best.genome)
             self.champion_gen = self.gen
 
@@ -298,7 +305,7 @@ class Evaluator:
             "best_conns": best.conns,
             "mean_conns": statistics.mean(r.conns for r in recs),
             "best_val_acc": best.val_acc,
-            "champion_val_acc": self.champion_key[0] if len(self.X_val) else "",
+            "champion_val_acc": self.champion_val if len(self.X_val) else "",
             "n_genome_changed": sum(r.hash_before != r.hash_after for r in recs),
             "n_clamped": sum(r.clamped for r in recs),
             "max_abs_param": max(float(np.abs(n.get_params()).max()) for n in nets),
