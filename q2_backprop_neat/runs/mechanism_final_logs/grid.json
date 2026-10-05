@@ -1,0 +1,39 @@
+{
+  "name": "mechanism_final_logs",
+  "datasets": [
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    20,
+    21,
+    22
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "lam_default_log",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--strategy": "lamarckian",
+        "--config": "neat_config.ini",
+        "--log-genomes": true
+      }
+    },
+    {
+      "name": "lam_norep_log",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--strategy": "lamarckian",
+        "--config": "neat_config_noreplace.ini",
+        "--log-genomes": true
+      }
+    }
+  ]
+}

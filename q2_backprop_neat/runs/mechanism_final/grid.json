@@ -1,0 +1,65 @@
+{
+  "name": "mechanism_final",
+  "datasets": [
+    "xor",
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "lam_default",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--strategy": "lamarckian",
+        "--config": "neat_config.ini"
+      }
+    },
+    {
+      "name": "bald_default",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--strategy": "baldwinian",
+        "--config": "neat_config.ini"
+      }
+    },
+    {
+      "name": "lam_norep",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--strategy": "lamarckian",
+        "--config": "neat_config_noreplace.ini"
+      }
+    },
+    {
+      "name": "bald_norep",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--strategy": "baldwinian",
+        "--config": "neat_config_noreplace.ini"
+      }
+    }
+  ]
+}
