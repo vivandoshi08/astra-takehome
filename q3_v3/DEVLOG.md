@@ -323,3 +323,28 @@ a comment's interval; a reference to a report that does not exist yet; and
 a disclosure — a near-identical fit was already scored on PUBLIC/HELD_OUT in
 the audit, before `student.py` existed (no setting is PUBLIC-specific: 11
 variants land within 1.4e-5). Scores unchanged: −0.0095997 / −0.0096800.
+
+## 2026-10-05 — C1 complete; census and comparison tools; Luna's failed answers
+
+**C1 (Haiku + reasoning low) vs A:** median −0.0175 vs −0.0173, exact
+two-sided rank test p = 1.00, ranges overlap — not separated
+(`compare_groups.py a r`). As predicted ("does not survive the spread").
+
+**Search census** (`search_census.py`): an encoder "searches" if it calls a
+function that draws an ellipse (its decode or a helper). My first version
+looked only at module-level helpers; run l03 sat at −0.0096 with 0/10
+"searching" encoders, which a measuring encoder cannot reach — its
+renderer was nested *inside* encode. Fixed to count nested renderers. After
+the fix: A 0/240, C1 0/240, B 149/237, C2 55/60 (partial).
+
+**Why Luna's answers fail** (not truncation): of its first 61 answers, 10
+do not compile, all the same way — the axis line
+`a = min(4.6, max(1.3, 2 * math.sqrt(max(0.25, (xx + yy + disc) / 2)))`
+with one closing parenthesis missing; 2 are cut off at 2,048 tokens; 1
+times out; 1 is invalid. The loop discards them; nothing in the scoring is
+affected.
+
+**Race so far** (`figures/race_public.txt`, `race_held_out.txt`; plots in
+`figures/`): student −0.0096 / −0.0097; A and C1 champions −0.0131 to
+−0.0244 on PUBLIC. A second zsh word-splitting slip of mine (a `$C` list of
+paths not split) failed the first race call; reran with globs.

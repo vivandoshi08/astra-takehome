@@ -1,0 +1,31 @@
+scoring on data.PUBLIC (128 images; higher is better, 0.0 is perfect)
+
+  student (yours)          -0.0096
+  mean                     -0.0454
+  pca (k=6)                -0.0173
+  vae (k=6)                -0.0051
+  champion (a01)           -0.0173
+  champion (a02)           -0.0146
+  champion (a03)           -0.0244
+  champion (a04)           -0.0178
+  champion (a05)           -0.0165
+  champion (r01)           -0.0131
+  champion (r02)           -0.0226
+  champion (r03)           -0.0213
+  champion (r04)           -0.0151
+  champion (r05)           -0.0175
+
+  race_student__yours.png
+  race_mean.png
+  race_pca__k_6.png
+  race_vae__k_6.png
+  race_champion__a01.png
+  race_champion__a02.png
+  race_champion__a03.png
+  race_champion__a04.png
+  race_champion__a05.png
+  race_champion__r01.png
+  race_champion__r02.png
+  race_champion__r03.png
+  race_champion__r04.png
+  race_champion__r05.png
