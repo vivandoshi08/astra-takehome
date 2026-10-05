@@ -261,18 +261,20 @@ Signals for choosing group B's change:
   encoder that searched would reach −0.0099 to −0.0123. And 0 of 173 logged
   encoders draws an ellipse or iterates — every one measures once.
 
-## 2026-10-05 — group C2 (Sonnet 5) stopped after 7 calls each: every answer cut off
+## 2026-10-05 — group C2 (Sonnet 5) stopped after 6–7 calls each: every answer cut off
 
 All 13 runs of B, C1, C2 started in parallel (explicit launcher script,
 checked with `ps`: 13 processes, right env vars, guard running). After
 generation 0 the three Sonnet runs showed `valid 0/4` with identical token
 counts (13,692) — four answers each of exactly 2,048 output tokens.
-`responses.jsonl`: 21/21 answers `finish_reason = length`, no code; usage
+`responses.jsonl`: 20/20 answers `finish_reason = length`, no code; usage
 shows **1,062–2,048 reasoning tokens per answer**. Sonnet 5 reasons by
 default on OpenRouter even with `EVO_REASONING` unset, and its hidden
 reasoning shares the shipped `MAX_TOKENS = 2048` with the answer, so some
 answers come back empty. Stopped s01–s03 with SIGTERM (clean: logs,
-best.py = the SEED, `stop_reason: interrupted`). Cost $0.49 (21 × $0.0232).
+best.py = the SEED, `stop_reason: interrupted`). Cost $0.46 (20 calls:
+7 + 6 + 7). *Corrected later: I first wrote 21 calls / $0.49, multiplying
+before the logs had settled; `spend.py` and the logs say 20 / $0.4646.*
 
 So the README's "Sonnet 5 is about $0.80 a run" does not hold with the
 shipped client: as shipped, a Sonnet run produces no programs at all.

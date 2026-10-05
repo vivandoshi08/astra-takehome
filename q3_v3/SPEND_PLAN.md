@@ -102,7 +102,7 @@ helper that draws, or loops over candidate parameter values comparing errors.
 
 ## C2 revised: GPT-6 Luna instead of Sonnet (written before the runs)
 
-Sonnet 5 was stopped after 7 calls a run (every answer cut off by its own
+Sonnet 5 was stopped after 6–7 calls a run (every answer cut off by its own
 reasoning; DEVLOG). The user chose an OpenAI model instead: `openai/gpt-6-luna`
 ($0.10 / $0.50 per Mtok). Probes (`runs/probe-gpt6luna`, `runs/probe-gpt41mini`):
 
@@ -131,7 +131,7 @@ C1 champions (rank test p ≈ 0.008). HELD_OUT within ±0.0003 of PUBLIC.
 B vs A came out at exact p = 0.032 with overlapping ranges: b05, whose
 encoders searched in only 6/48 answers, scored −0.0167, inside A's range.
 That is the borderline comparison, so it gets the extension. The planned
-3 + 3 runs no longer fit under the $9.50 guard (Sonnet's $0.49, and B runs
+3 + 3 runs no longer fit under the $9.50 guard (Sonnet's $0.46, and B runs
 cost $0.38–0.66 against $0.40 for A), so the user chose two more B runs
 (~$1.10; total ≈ $9.10).
 
