@@ -21,6 +21,22 @@ any refinement code are in `AUDIT.md`; this file starts after that.
 
 ## Surprises to investigate
 
+- **Lamarckian runs fragment into many species; 4 of 9 Lamarckian
+  successive-halving runs crashed.** neat-python raised `RuntimeError:
+  population size 100 is less than num_species * min_species_size 102
+  (51 * 2)`. Max species per run in the allocation grid: Baldwinian 2–5 in
+  every arm; Lamarckian 6–23 (A), 16–49 (B), 23–41 (D, survivors). Lamarckian
+  weights reach the +-30 bound (max |param| 30 in most runs; Baldwinian
+  7–21). Likely chain: written-back refined weights drift apart between
+  lineages -> NEAT's compatibility distance (weight term, coefficient 0.5)
+  passes the 3.0 threshold -> one species per genome or two -> with
+  elitism 2 per species the population cannot hold them. Found when the
+  harness reported the crashes; the crashed cells are kept as results
+  (Lamarckian + halving is infeasible under this config on those seeds),
+  not re-run. Note: main.py only catches BudgetExhausted, so a crash
+  writes no fitness_history.csv; the species trajectory up to a crash is
+  not logged.
+
 - **Refinement collapses most xor genomes to a constant.** 80% of hidden-node
   xor genomes from plain NEAT converge to p = 0.5 everywhere (loss ln 2,
   gradient ~8e-6 after 2,000 steps); training accuracy falls 0.71 -> 0.52.
