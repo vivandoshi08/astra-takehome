@@ -87,7 +87,7 @@ changed setting in deliverable 3.
 
 | # | finding | evidence | status |
 |---|---|---|---|
-| F1 | README: "Haiku 4.5 does not support reasoning effort" — may be wrong. If OpenRouter turns effort into a thinking budget inside `max_tokens=2048`, answers truncate. | reading only | verify — one call; check `finish_reason` and usage |
+| F1 | README: "Haiku 4.5 does not support reasoning effort" — may be wrong. If OpenRouter turns effort into a thinking budget inside `max_tokens=2048`, answers truncate. | `runs/probe-01` | **verified, README wrong**: Haiku 4.5 accepts reasoning "low" (402 reasoning tokens, billed as output, answer not cut off) |
 | F2 | Prompt says the rim fades "over roughly one pixel": exactly 1 px along the minor axis, a/b px (up to 3.1) along the major. Rim pixels are 57% of the lit pixels and 28% of signal energy. It omits a ≥ 2.2 and the centre range. | `math/check_data` | doc |
 | F3 | Digit grids clip negatives to 0 (44% of pixels are negative) and ≥ 0.95 to 9. | `math/check_data` | doc |
 | F4 | θ is weakly identified for near-circles (a/b < 1.05 in 11% of PUBLIC) and wraps at π; the decoder needs a ≥ b. | `math/check_data` §3 | doc — matters for any regression on θ |

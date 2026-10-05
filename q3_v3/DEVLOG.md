@@ -130,3 +130,27 @@ the loop's real generation-0 prompt, logged through `TokenBudget` so
   (min ~1,024 of our 2,048), so the answer has ~1,000 tokens left: about
   even odds it is cut off (`finish_reason` "length", no code).
 - The provider's meter, once settled, matches `spend.py` to within $0.001.
+
+**Probe results** (`runs/probe-01`, $0.0139):
+
+| | predicted | got |
+|---|---|---|
+| default: tokens in / out | 1,000–1,200 / 600–1,500 | 1,209 / 1,019 ✓ |
+| default: finish | stop | stop ✓ |
+| default: score | better than SEED (−0.0272) | **−0.1405 ✗** — worse than the mean image |
+| reasoning "low": accepted | yes | yes ✓ — 402 reasoning tokens, billed as output (1,279 total) |
+| reasoning "low": cut off | about even odds | no ✗ — the thinking budget was smaller than I assumed |
+| meters agree | within $0.001 | `spend.py` $0.013937 = the provider's per-call `cost` field exactly; the key meter showed one of two calls settled at first |
+
+Why the default answer scored −0.14: Haiku had the right idea (second
+moments of the bright pixels give axes and tilt) and two wrong constants:
+axes = 2.4·√λ where a filled ellipse needs 2·√λ (20% too large), and
+brightness = the brightest pixel, which with σ = 0.1 noise sits well above
+the true level. The reasoning answer made the same choices (2.4·√λ, max
+pixel) plus a tanh rim instead of the known linear one: −0.0630. So a
+first attempt can be worse than the SEED; the loop keeps the SEED in the
+population, which is what protects it.
+
+AUDIT.md F1 settled: Haiku 4.5 does accept `EVO_REASONING` on OpenRouter,
+against the README. Real cost per call is ~$0.006–0.008 at generation 0,
+so ~$0.40 per 12-generation run holds; reasoning "low" adds ~25%.

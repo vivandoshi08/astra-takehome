@@ -1,0 +1,2 @@
+{"call": 1, "tag": "openrouter:anthropic/claude-haiku-4.5|probe-default", "input_tokens": 1209, "output_tokens": 1019, "cumulative": 2228, "wall_ts": 1791179145.207468}
+{"call": 2, "tag": "openrouter:anthropic/claude-haiku-4.5|probe-reasoning-low", "input_tokens": 1238, "output_tokens": 1279, "cumulative": 4745, "wall_ts": 1791179154.178126}
