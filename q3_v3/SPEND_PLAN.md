@@ -138,3 +138,22 @@ cost $0.38–0.66 against $0.40 for A), so the user chose two more B runs
 **Prediction (b06, b07):** both search in at least 30% of their answers
 and finish better than A's best (−0.0146); a b05-like run (hint mostly
 ignored) happens about one time in five, so probably neither.
+
+## Outcome against the plan
+
+| | planned | spent |
+|---|---|---|
+| probes | 0.01 | 0.02 (three probes: Haiku, gpt-4.1-mini, GPT-6 Luna) |
+| A shipped × 5 | 2.00 | 1.96 |
+| B hint × 5 (+2 extension) | 2.25 (+1.10) | 3.73 |
+| C1 reasoning × 5 | 2.50 | 2.62 |
+| C2 Sonnet × 3 → stopped | 2.40 | 0.46 |
+| C2 Luna × 5 (stopped at 5–9 generations) | 0.50 | 0.19 |
+| total | ≈ 9.10 | **8.98** (provider meter 8.95) |
+
+Stop rule 3 (pause on any run over $0.60) was broken once: b03 cost $0.66.
+The runs went in parallel and I only saw it after it finished; the cause is
+benign (searching programs are longer, so prompts grow). The other rules
+held, and the guard never fired. $1.02 is left on
+purpose — the next control worth buying (a placebo arm) costs ~$2.50, and
+one more run of anything would not change a conclusion.

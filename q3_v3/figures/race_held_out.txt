@@ -4,13 +4,7 @@ scoring on data.HELD_OUT (256 images; higher is better, 0.0 is perfect)
   mean                     -0.0444
   pca (k=6)                -0.0195
   vae (k=6)                -0.0346
-  champion (a01)           -0.0170
   champion (a02)           -0.0146
-  champion (a03)           -0.0254
-  champion (a04)           -0.0177
-  champion (a05)           -0.0164
+  champion (b07)           -0.0097
   champion (r01)           -0.0118
-  champion (r02)           -0.0248
-  champion (r03)           -0.0212
-  champion (r04)           -0.0153
-  champion (r05)           -0.0178
+  champion (l03)           -0.0097

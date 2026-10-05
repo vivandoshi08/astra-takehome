@@ -95,6 +95,8 @@ changed setting in deliverable 3.
 | F6 | `package_submission.sh` copies no `.py`, so `runs/*/best.py` reach the tarball only via the git bundle; its `student.py` check greps a marker the instructions say to keep (false alarm); `finding.md` template satisfies its report check (false all-clear). | `loop/check_packaging` | doc — commit `runs/` |
 | F7 | `race.py --images` accepts any attribute (`SIGMA` crashes) and writes PNGs to the CWD, overwriting PUBLIC plots on a HELD_OUT run. | `run_race_sandboxed.sh` | doc — use `--no-plots` or a temp dir |
 | F8 | Minor: dead `except BudgetExhausted: raise`; seed record says `valid_this_gen=0`; loop.py is 229 lines, not "about 150"; `sanity_check.sh`'s Q3 check hides its errors; `plot_traversal` sweeps 2nd–98th percentile, not the "observed range". | `loop/check_misc`, reading | doc |
+| F9 | `MAX_TOKENS = 2048` is shared with hidden reasoning. Models that reason by default (Sonnet 5; GPT-6 Luna as shipped) spend it all on reasoning: every Sonnet answer (20/20) was cut off with no code, so the README's "Sonnet 5 is about $0.80 a run" produces nothing with the shipped client. | `runs/s01–s03`, `runs/probe-gpt6luna` | found during the runs; documented (Luna run with reasoning "low") |
+| F10 | The sandbox's 180 s limit (ours) is wall-clock, so machine load can turn slow but valid programs into timeouts; searching programs are slow. | Luna 26/145 timeouts; two HELD_OUT scorings re-run with `rescore_held_out.py` | documented |
 
 ## Checked and correct
 

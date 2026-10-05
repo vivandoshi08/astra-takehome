@@ -362,3 +362,30 @@ sandbox's 180 s limit is wall-clock, so load turns slow-but-valid programs
 into timeouts: Luna 11/97 answers timed out (B 3/262, A and C1 0). Stopped
 the decomposition to free the CPU; it reruns after the paid runs. The
 timeout dependence on load goes in the report's limits.
+
+## 2026-10-05 — all runs finished; numbers filled; proofread
+
+- b06, b07 (extension): −0.0118, −0.0097; both searched (45, 46 of 48) —
+  prediction met. B with 7 runs vs A: p = 0.010.
+- Luna runs stopped at the user's call once b06/b07 finished (5–9 of 12
+  generations; every one at −0.0096/−0.0097 since generation 1–2). l01 and
+  l02's own HELD_OUT scoring timed out — I had restarted
+  `decompose_champions.py` at the same moment, the same load slip as
+  before — so their champions were re-scored with a 1,200 s limit
+  (`rescore_held_out.py`; −0.00977 both), stored beside the untouched logs.
+  `summarize_runs.py` crashed on the missing value; fixed.
+- Luna vs C1 (only the model differs): p = 0.008, no overlap, both sets.
+- Decomposition rerun on a quiet machine: B's searching champions lose
+  0.0000–0.0002 in the encoder (b05, the non-searcher, 0.0060).
+- Final race (best champion per group; scoring all 12 searching champions
+  in-process would take 30+ minutes, and every champion is already scored
+  on both sets in its run_meta): a02 −0.0146, r01 −0.0131, b07 −0.0097,
+  l03 −0.0096, our model −0.0096.
+- Spend $8.98 (`spend.py`), provider meter $8.95; 25 loop runs + 3 probes,
+  991 calls, 4.87M tokens.
+- Proofreading caught, and I fixed: four wrong numbers in the report draft
+  (b07 HELD_OUT, A and B costs, Luna generations counted from 0); two
+  overclaims ("the whole gap in the encoder" — the decoders still lose a
+  little; all 26 Luna timeouts blamed on load); B's decoder loss shown as
+  "—" when it was measured; "reached the floor" for two runs at −0.0114 and
+  −0.0118.
