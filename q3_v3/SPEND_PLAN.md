@@ -63,3 +63,39 @@ the population, so its best can only improve.
 
 Group B's change is chosen after group A, from its logs, with its own
 prediction committed here before its first run.
+
+## After group A: groups B, C1, C2 (written before they run)
+
+Group A (shipped loop × 5, $1.96): median −0.0173, spread 0.0098; no
+duplicates in the prompt, no cut-off answers, little hidden progress behind
+the 4-decimal display — so deduplication, more decimals and a longer answer
+limit have nothing to fix. What the logs do show: almost all of every
+champion's error is in its encoder (`decompose_champions.py`), and 0 of 173
+logged encoders ever draws an ellipse or searches. Encode *can* call decode
+(both are compiled from the same source); a ten-line search added to the
+SEED alone scores −0.0156, better than A's median.
+
+| group | the one change vs group A | runs | est. $ | question |
+|---|---|---|---|---|
+| **B** | `--prompt-hint`: one sentence saying encode can call decode, e.g. to adjust its six numbers until decode(z) matches | 5 | ~2.25 | deliverable 3's change: is the loop stuck because Haiku never *thinks of* fitting? |
+| C1 | `EVO_REASONING=low` | 5 | ~2.50 | alternative: does thinking first find it unprompted? |
+| C2 | `EVO_MODEL=anthropic/claude-sonnet-5` | 3 | ~2.40 | alternative: does a stronger model find it unprompted? |
+
+All 13 run in parallel. Expected total after them ≈ $9.10. `spend_guard.py
+--limit 9.50` stops any still-running run cleanly if the real spend gets
+there (stop rule 4).
+
+**Predictions.** "Searching encoder" = an encoder that calls decode or a
+helper that draws, or loops over candidate parameter values comparing errors.
+
+- **B (hint):** at least a third of answers from generation 1 on have a
+  searching encoder. Champion median **≤ −0.0120**; all five better than A's
+  median (−0.0173) and at least four better than A's best (−0.0146), so the
+  difference survives the spread (rank test p ≲ 0.03). HELD_OUT within
+  ±0.0005 of PUBLIC. Some answers time out (< 10%). $0.40–0.55 per run.
+- **C1 (reasoning):** searching encoders under 5%. Median about −0.016;
+  ranges overlap A's; the difference does not survive the spread.
+  $0.45–0.55 per run.
+- **C2 (Sonnet):** some searching encoders (10–40%). Median about −0.013,
+  better than A's; with 3 runs against 5 no rank test can be decisive
+  (smallest two-sided p = 2/56 ≈ 0.036). $0.70–0.95 per run.

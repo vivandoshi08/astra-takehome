@@ -77,9 +77,20 @@ def compile_candidate(code: str, entry="heuristic", isolated: bool = False):
     return fns[0] if isinstance(entry, str) else fns
 
 
-def build_prompt(task, population: list[tuple[float, str]], k: int = 3) -> str:
-    """Show the top-k candidates with their scores and ask for a better one."""
-    parts = [task.prompt_header()]
+# Group B's one change (SPEND_PLAN.md): one sentence after the task header.
+# It states a fact about how candidates are compiled; it gives no code.
+PROMPT_HINT = (
+    "Note: encode and decode are compiled from the same source, so encode "
+    "can call your decode function (or any helper you write) - for example "
+    "to adjust its six numbers until decode(z) reproduces the image as "
+    "closely as possible.\n")
+
+
+def build_prompt(task, population: list[tuple[float, str]], k: int = 3,
+                 extra: str = "") -> str:
+    """Show the top-k candidates with their scores and ask for a better one.
+    `extra` (default empty: the shipped prompt) goes right after the header."""
+    parts = [task.prompt_header() + (("\n" + extra) if extra else "")]
     if population:
         parts.append("\nHere are the best programs so far, with their scores "
                      "(higher is better):\n")
@@ -129,7 +140,7 @@ def run(task="ellipses", client=None, generations: int = 12,
         candidates_per_gen: int = 4, population_size: int = 8,
         budget: TokenBudget | None = None, log_path=None, quiet: bool = False,
         responses_path=None, sandbox: bool = True,
-        eval_timeout: float = 180.0):
+        eval_timeout: float = 180.0, prompt_extra: str = ""):
     """Run the loop. Returns (best_score, best_code, history).
 
     If the run stops early (the token cap raises BudgetExhausted, an API
@@ -199,7 +210,7 @@ def run(task="ellipses", client=None, generations: int = 12,
 
     try:
         for gen in range(generations):
-            prompt = build_prompt(task, population)
+            prompt = build_prompt(task, population, extra=prompt_extra)
             scored_this_gen = []
             stop = None
             for c in range(candidates_per_gen):
@@ -297,6 +308,8 @@ def main() -> int:
     ap.add_argument("--run-id", default="run")
     ap.add_argument("--eval-timeout", type=float, default=180.0,
                     help="seconds per scoring subprocess (shipped: none)")
+    ap.add_argument("--prompt-hint", action="store_true",
+                    help="add PROMPT_HINT after the task header (group B)")
     ap.add_argument("--no-sandbox", action="store_true",
                     help="score candidates in-process, as shipped (unsafe; "
                          "for comparison only)")
@@ -337,10 +350,19 @@ def main() -> int:
             "generations": args.generations, "candidates": args.candidates,
             "population_size": 8, "cap": args.cap,
             "sandbox": not args.no_sandbox, "eval_timeout": args.eval_timeout,
+            "prompt_hint": PROMPT_HINT if args.prompt_hint else None,
             "git_commit": sha, "git_dirty": dirty,
             "python": sys.version.split()[0]}
     meta_path = run_dir / "run_meta.json"
     meta_path.write_text(json.dumps(meta, indent=2) + "\n")
+
+    # A background run ignores Ctrl-C; SIGTERM stops it the same clean way
+    # (best.py and run_meta.json still written), e.g. near the credit limit.
+    import signal
+
+    def _term(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, _term)
 
     stop_reason = None
     try:
@@ -351,7 +373,8 @@ def main() -> int:
                             log_path=run_dir / "run_log.jsonl",
                             responses_path=run_dir / "responses.jsonl",
                             sandbox=not args.no_sandbox,
-                            eval_timeout=args.eval_timeout)
+                            eval_timeout=args.eval_timeout,
+                            prompt_extra=PROMPT_HINT if args.prompt_hint else "")
     except BaseException as exc:
         if isinstance(exc, BudgetExhausted):
             print(f"\n[budget] {exc}")
