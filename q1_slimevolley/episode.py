@@ -81,7 +81,7 @@ def run_episode(net, env) -> EpisodeStats:
     pending_return = False  # we touched the ball; has it crossed the net yet?
     done = False
     while not done:
-        out = net.activate(obs)
+        out = net.activate(net_inputs(net, obs))
         action = action_from_outputs(out)
         before = _CONTACTS[1], _CONTACTS[-1]
         obs, reward, done, _ = env.step(action)
@@ -106,6 +106,21 @@ def run_episode(net, env) -> EpisodeStats:
         s.act_idle += not any(action)
         s.act_both += action[0] and action[1]
     return s
+
+
+def net_inputs(net, obs):
+    """The network's input vector: the 12 observations, plus — for 14-input
+    networks (configs/relative.ini) — ball position relative to our agent.
+
+    Observations are in our own frame, scaled /10: [x, y, vx, vy, bx, by, bvx,
+    bvy, ox, oy, ovx, ovy]. 'Get under the ball' needs output ~ f(bx - x);
+    from raw inputs that takes two weights tuned to cancel, from bx - x it
+    takes one, which a single mutation can find. The input count is read from
+    the network, so 12-input champions keep working unchanged.
+    """
+    if len(net.input_nodes) == 14:
+        return [*obs, obs[4] - obs[0], obs[5] - obs[1]]
+    return obs
 
 
 def action_from_outputs(out) -> list[int]:
