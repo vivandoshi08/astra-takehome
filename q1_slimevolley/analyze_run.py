@@ -14,8 +14,13 @@ and a verdict:
     INFO  descriptive only, no threshold
     SKIP  a file or column the check needs is missing
 
+Also reads stdout.log (NEAT stagnation / extinction lines) when present. Checks
+on the newer episode-behaviour fields (contacts, returns, act_both, out_sat, and
+their history columns) SKIP on older runs that did not log them.
+
 Writes <out>/analysis.md (summary table first, then the full detail) and
-four plots: fitness_curve.png, seed_noise.png, behavior.png, complexity.png.
+five plots: fitness_curve.png, seed_noise.png, behavior.png, complexity.png,
+contacts.png.
 No scipy: the Student-t distribution is computed here from the incomplete beta
 function. 95% intervals use evaluate.t_crit_95 (so numbers agree with
 evaluate.py) when df >= 9, where it is within 0.005 of exact; below that the
@@ -49,6 +54,8 @@ SCORE_MIN, SCORE_MAX = -5, 5
 TOL_EXACT = 1e-9      # recomputed from raw lists in the same file
 TOL_CSV = 1e-6        # values that went through CSV formatting
 ACT_KEYS = ("act_fwd", "act_back", "act_jump", "act_idle")
+RANDOM_CONTACTS, RANDOM_RETURNS = 1.4, 0.1      # random play, per episode (LOGS.md)
+BUILTIN_CONTACTS, BUILTIN_RETURNS = 47.0, 25.5  # built-in opponent policy playing our side
 
 
 # --------------------------------------------------------------------------
@@ -245,11 +252,24 @@ class Run:
         self.genomes = read_jsonl(run_dir / "genomes.jsonl")
         self.val = read_jsonl(run_dir / "validation.jsonl")
         self.champ = read_json(run_dir / "champion.json")
+        log = run_dir / "stdout.log"
+        self.stdout = log.read_text(errors="replace") if log.exists() else None
 
     def bonus(self):
-        """Survival bonus B from run_args (selection fitness = mean(score + B*steps/3000))."""
+        """Survival bonus B from run_args (selection fitness = mean(score + B*steps/3000 + R*returns))."""
         b = find_key(self.args or {}, ("survival_bonus",))
         return float(b) if isinstance(b, (int, float)) else 0.0
+
+    def return_bonus(self):
+        """Return bonus R from run_args (selection fitness += R*returns per episode); missing = 0."""
+        r = find_key(self.args or {}, ("return_bonus",))
+        return float(r) if isinstance(r, (int, float)) else 0.0
+
+    def return_cap(self):
+        """Returns per episode that earn the bonus (--return-cap); missing = uncapped
+        (runs before the cap existed: their max returns per episode was 7, below 9)."""
+        c = find_key(self.args or {}, ("return_cap",))
+        return int(c) if isinstance(c, (int, float)) else None
 
     def worker_cap(self):
         """Per-process step cap the scaffold enforces: budget // workers."""
@@ -291,8 +311,15 @@ def raw_of(g):
     return mean(g["scores"]) if g.get("scores") else g["fitness"]
 
 
-def selection_fitness(scores, steps, bonus):
-    return mean([s + bonus * t / EPISODE_STEP_LIMIT for s, t in zip(scores, steps)])
+def capped(r, cap):
+    return r if cap is None else min(r, cap)
+
+
+def selection_fitness(scores, steps, bonus, returns=None, rbonus=0.0, cap=None):
+    """mean_i(score_i + B*steps_i/3000 + R*min(returns_i, cap))."""
+    returns = returns if returns is not None else [0] * len(scores)
+    return mean([s + bonus * t / EPISODE_STEP_LIMIT + rbonus * capped(r, cap)
+                 for s, t, r in zip(scores, steps, returns)])
 
 
 def find_key(obj, names):
@@ -369,7 +396,7 @@ class Report:
         for name, result, verdict in self.summary:
             cell = result.replace("|", "\\|")
             head.append(f"| {name} | {cell} | **{verdict}** |")
-        head += ["", "Plots: fitness_curve.png, seed_noise.png, behavior.png, complexity.png", ""]
+        head += ["", "Plots: fitness_curve.png, seed_noise.png, behavior.png, complexity.png, contacts.png", ""]
         body = []
         for line in self.lines:
             body.append(line if line.startswith(("#", ">")) or line == "" else line)
@@ -510,15 +537,19 @@ def check_fitness(run: Run, rep: Report):
         return
 
     n = len(run.genomes)
-    B = run.bonus()
+    B, R = run.bonus(), run.return_bonus()
     has_raw = "raw_fitness" in run.genomes[0]
-    rep.out(f"survival bonus B = {B} (run_args); raw_fitness column {'present' if has_raw else 'absent (older log)'}")
+    rep.out(f"survival bonus B = {B}, return bonus R = {R} (run_args; missing = 0); "
+            f"raw_fitness column {'present' if has_raw else 'absent (older log)'}")
+    no_returns = 0
     bad_mean, bad_raw, bad_diff, bad_range, bad_len, bad_timeout = [], [], [], [], [], []
     for g in run.genomes:
         sc = g.get("scores", [])
         tag = (g["gen"], g["key"])
         if sc:
-            want = selection_fitness(sc, g.get("steps", [0] * len(sc)), B)
+            if R and "returns" not in g:
+                no_returns += 1
+            want = selection_fitness(sc, g.get("steps", [0] * len(sc)), B, g.get("returns"), R, run.return_cap())
             if abs(g["fitness"] - want) > TOL_EXACT:
                 bad_mean.append((tag, g["fitness"], want))
             if has_raw and abs(g["raw_fitness"] - mean(sc)) > TOL_EXACT:
@@ -544,9 +575,10 @@ def check_fitness(run: Run, rep: Report):
                   f"{len(bad_raw)} of {n:,} genome rows violate{ex(bad_raw)}",
                   "consistent" if not bad_raw else f"{len(bad_raw)} rows inconsistent",
                   "PASS" if not bad_raw else "FAIL", "zero violations")
-    rep.check("fitness == mean(score + B*steps/3000)",
-              f"|fitness - mean_i(scores[i] + B*steps[i]/3000)| <= {TOL_EXACT}, B = {B}",
-              f"{len(bad_mean)} of {n:,} genome rows violate{ex(bad_mean)}",
+    rep.check("fitness == mean(score + B*steps/3000 + R*min(returns, cap))",
+              f"|fitness - mean_i(scores[i] + B*steps[i]/3000 + R*returns[i])| <= {TOL_EXACT}, B = {B}, R = {R}",
+              f"{len(bad_mean)} of {n:,} genome rows violate{ex(bad_mean)}"
+              + (f"; {no_returns} rows have R > 0 but no returns[] (R term taken as 0)" if no_returns else ""),
               "consistent" if not bad_mean else f"{len(bad_mean)} rows inconsistent",
               "PASS" if not bad_mean else "FAIL", "zero violations")
     rep.check("scores == points_for - points_against",
@@ -1121,15 +1153,16 @@ def check_population(run: Run, rep: Report):
 # --------------------------------------------------------------------------
 
 def check_shaping(run: Run, rep: Report):
-    rep.begin("10. Reward shaping (survival bonus)")
-    B = run.bonus()
-    if B == 0:
-        rep.skip("bonus share of selection fitness", "survival_bonus is 0 (or absent): selection fitness == raw score")
+    rep.begin("10. Reward shaping (survival / return bonus)")
+    B, R = run.bonus(), run.return_bonus()
+    if B == 0 and R == 0:
+        rep.skip("bonus share of selection fitness",
+                 "survival_bonus and return_bonus are 0 (or absent): selection fitness == raw score")
         return
     if not run.genomes:
         rep.skip("bonus share of selection fitness", "genomes.jsonl missing")
         return
-    shares, cov_shares, corrs, gens = [], [], [], []
+    shares, cov_shares, corrs, gens, surv_sh, ret_sh = [], [], [], [], [], []
     for gen, pop in run.genomes_by_gen().items():
         raw = [raw_of(g) for g in pop]
         bonus = [g["fitness"] - r for g, r in zip(pop, raw)]
@@ -1143,20 +1176,31 @@ def check_shaping(run: Run, rep: Report):
         cov_shares.append(2 * cov / vf)
         corrs.append(pearson(raw, bonus))
         gens.append(gen)
+        surv_sh.append(statistics.pvariance([B * mean(g.get("steps", [0])) / EPISODE_STEP_LIMIT for g in pop]) / vf)
+        if R and all("returns" in g for g in pop):
+            ret_sh.append(statistics.pvariance(
+                [R * mean(capped(r, run.return_cap()) for r in g["returns"]) for g in pop]) / vf)
     if not shares:
         rep.skip("bonus share of selection fitness", "selection fitness has zero variance in every generation")
         return
     q = max(1, len(shares) // 4)
     late = mean(shares[-q:])
     rep.check("bonus share of selection-fitness variance",
-              "per gen: bonus_k = fitness_k - raw_k; Var(fit) = Var(raw) + Var(bonus) + 2Cov(raw, bonus); "
-              "share = Var(bonus)/Var(fit)",
-              f"B = {B}; {len(shares)} gens; mean share {fmt(mean(shares), 3)} (last {q} gens {fmt(late, 3)}); "
+              "per gen: bonus_k = fitness_k - raw_k (= mean(B*steps/3000 + R*returns), both shaping terms); "
+              "Var(fit) = Var(raw) + Var(bonus) + 2Cov(raw, bonus); share = Var(bonus)/Var(fit)",
+              f"B = {B}; R = {R}; {len(shares)} gens; mean share {fmt(mean(shares), 3)} (last {q} gens {fmt(late, 3)}); "
               f"mean 2Cov/Var(fit) {fmt(mean(cov_shares), 3)}; mean corr(raw, bonus) "
               f"{fmt(mean([c for c in corrs if math.isfinite(c)]), 3) if any(math.isfinite(c) for c in corrs) else 'nan'}",
-              f"{fmt(100 * late, 1)}% of late selection spread is survival bonus, not score",
+              f"{fmt(100 * late, 1)}% of late selection spread is shaping bonus, not score",
               "WARN" if late > 0.5 else "PASS",
-              "WARN if > 50% in the last quarter: selection mostly rewards survival")
+              "WARN if > 50% in the last quarter: selection mostly rewards the shaping terms")
+    if R:
+        rep.check("shaping variance split: survival vs return term",
+                  "per gen: Var(B*mean(steps)/3000)/Var(fit) and Var(R*mean(returns))/Var(fit); last-quarter means "
+                  "(they need not sum to the bonus share: the two terms covary)",
+                  f"B = {B}, R = {R}; survival term {fmt(mean(surv_sh[-q:]), 3)}; "
+                  f"return term {fmt(mean(ret_sh[-q:]), 3) if ret_sh else 'n/a (no returns[])'}",
+                  "see numbers", "INFO")
 
     to = run.hist_col("timeout_frac")
     mr = run.hist_col("mean_raw") or run.hist_col("best_raw")
@@ -1174,6 +1218,355 @@ def check_shaping(run: Run, rep: Report):
               f"timeout_frac slope {fmt(bt, 5)}/gen (t = {fmt(tt, 2)}); mean_raw slope {fmt(br, 5)}/gen (t = {fmt(tr, 2)})",
               "timeouts rising without raw-score gain: likely reward hacking" if stalling else "no stalling signature",
               "WARN" if stalling else "PASS", "WARN on the signature above")
+
+
+# --------------------------------------------------------------------------
+# 11-14. episode-behaviour fields (contacts, returns, act_both, out_sat)
+# --------------------------------------------------------------------------
+
+def has_contacts(run: Run):
+    return bool(run.genomes) and "contacts" in run.genomes[0] and "returns" in run.genomes[0]
+
+
+def contact_series(run: Run):
+    """Per gen, recomputed from genomes.jsonl: mean contacts / returns per episode."""
+    by_gen = run.genomes_by_gen()
+    gens, c, r = [], [], []
+    for gen, pop in by_gen.items():
+        cs = [x for g in pop for x in g.get("contacts", [])]
+        rs = [x for g in pop for x in g.get("returns", [])]
+        if cs:
+            gens.append(gen)
+            c.append(mean(cs))
+            r.append(mean(rs) if rs else float("nan"))
+    return gens, c, r
+
+
+def _step_weighted(pop, key):
+    """sum_k key_k * steps_k / sum_k steps_k, steps_k = genome k's total episode steps.
+
+    act_* and out_sat are already step-weighted fractions within each genome
+    (episode counts / that genome's steps), so this reproduces the population
+    fraction exactly (out_sat's factor 3 cancels)."""
+    tot = sum(sum(g.get("steps", [])) for g in pop)
+    if not tot:
+        return float("nan")
+    return sum(g[key] * sum(g.get("steps", [])) for g in pop) / tot
+
+
+def _hist_or_recompute(run: Run, col, recompute):
+    s = run.hist_col(col)
+    if s and s[1]:
+        return s, "fitness_history.csv"
+    return recompute(), "recomputed from genomes.jsonl"
+
+
+def check_behavior_logs(run: Run, rep: Report):
+    rep.begin("11. Behaviour-log consistency (contacts, returns, cancel, saturation)")
+    if not run.genomes:
+        rep.skip("behaviour fields", "genomes.jsonl missing")
+        return
+    g0 = run.genomes[0]
+    n = len(run.genomes)
+    if has_contacts(run):
+        bad_len, bad_ret, bad_neg = [], [], []
+        for g in run.genomes:
+            tag = (g["gen"], g["key"])
+            ne = len(g.get("scores", []))
+            lists = [g.get(k) for k in ("contacts", "opp_contacts", "returns") if k in g]
+            if any(len(x) != ne for x in lists):
+                bad_len.append(tag)
+            if any(r > c for c, r in zip(g["contacts"], g["returns"])):
+                bad_ret.append(tag)
+            if any(x < 0 or x != int(x) for lst in lists for x in lst):
+                bad_neg.append(tag)
+        n_eps = sum(len(g["contacts"]) for g in run.genomes)
+        rep.check("returns <= contacts per episode", "for every episode i: returns[i] <= contacts[i] "
+                  "(a return is a contact after which the ball crossed)",
+                  f"{len(bad_ret)} of {n:,} genome rows violate ({n_eps:,} episodes)"
+                  + (f"; first {bad_ret[0]}" if bad_ret else ""),
+                  "consistent" if not bad_ret else f"{len(bad_ret)} rows inconsistent",
+                  "PASS" if not bad_ret else "FAIL", "zero violations")
+        rep.check("contact lists: lengths and integrality",
+                  "len(contacts) == len(opp_contacts) == len(returns) == len(scores); all non-negative integers",
+                  f"length mismatches {len(bad_len)}; negative/non-integer {len(bad_neg)}",
+                  "consistent" if not (bad_len or bad_neg) else "inconsistent",
+                  "PASS" if not (bad_len or bad_neg) else "FAIL", "zero violations")
+    else:
+        rep.skip("returns <= contacts per episode", "genomes.jsonl has no contacts/returns (older log)")
+
+    if "act_both" in g0 and "act_fwd" in g0 and "act_back" in g0:
+        bad = [(g["gen"], g["key"]) for g in run.genomes
+               if g["act_both"] > min(g["act_fwd"], g["act_back"]) + TOL_EXACT]
+        rep.check("act_both <= min(act_fwd, act_back)", "both-pressed steps are a subset of fwd steps and of back steps",
+                  f"{len(bad)} of {n:,} rows violate" + (f"; first {bad[0]}" if bad else ""),
+                  "consistent" if not bad else f"{len(bad)} rows inconsistent",
+                  "PASS" if not bad else "FAIL", "zero violations")
+    if "out_sat" in g0:
+        bad = [(g["gen"], g["key"]) for g in run.genomes if not 0 <= g["out_sat"] <= 1]
+        rep.check("out_sat in [0, 1]", "0 <= out_sat <= 1", f"{len(bad)} of {n:,} rows violate",
+                  "consistent" if not bad else "out of range", "PASS" if not bad else "FAIL", "zero violations")
+
+    if run.val and has_contacts(run):
+        v_rows = [v for v in run.val if "val_contacts" in v]
+        if v_rows:
+            bad_ret = [(v["gen"], v["key"]) for v in v_rows
+                       if any(r > c for c, r in zip(v["val_contacts"], v.get("val_returns", [])))]
+            bad_len = [(v["gen"], v["key"]) for v in v_rows
+                       if any(len(v.get(k, v["val_scores"])) != len(v["val_scores"])
+                              for k in ("val_contacts", "val_opp_contacts", "val_returns"))]
+            rep.check("validation: val_returns <= val_contacts, lengths agree",
+                      "per validation episode: val_returns[i] <= val_contacts[i]; list lengths == len(val_scores)",
+                      f"{len(bad_ret)} rows with returns > contacts; {len(bad_len)} rows with length mismatch "
+                      f"(of {len(v_rows)})",
+                      "consistent" if not (bad_ret or bad_len) else "inconsistent",
+                      "PASS" if not (bad_ret or bad_len) else "FAIL", "zero violations")
+
+    if not run.hist:
+        rep.skip("behaviour history recompute", "fitness_history.csv missing")
+        return
+    cols = run.hist[0].keys()
+    by_gen = run.genomes_by_gen()
+
+    def best_raw_contacts(pop):
+        top = max(raw_of(g) for g in pop)
+        return {mean(g["contacts"]) for g in pop if raw_of(g) == top and g.get("contacts")}
+
+    recompute = {
+        "mean_contacts": ("mean over every episode of contacts[]", ("contacts",),
+                          lambda p: mean([x for g in p for x in g["contacts"]])),
+        "mean_returns": ("mean over every episode of returns[]", ("returns",),
+                         lambda p: mean([x for g in p for x in g["returns"]])),
+        "mean_cancel": ("sum_k act_both_k * S_k / sum_k S_k, S_k = sum(steps_k)", ("act_both",),
+                        lambda p: _step_weighted(p, "act_both")),
+        "mean_sat": ("sum_k out_sat_k * S_k / sum_k S_k, S_k = sum(steps_k)", ("out_sat",),
+                     lambda p: _step_weighted(p, "out_sat")),
+        "mean_nodes": ("mean over genomes of nodes", ("nodes",), lambda p: mean([g["nodes"] for g in p])),
+        "mean_conns": ("mean over genomes of conns", ("conns",), lambda p: mean([g["conns"] for g in p])),
+        "best_raw_contacts": ("mean(contacts) of a genome with max raw_fitness (ties allowed)", ("contacts",),
+                              best_raw_contacts),
+    }
+    for col, (formula, need, fn) in recompute.items():
+        if col not in cols:
+            rep.skip(f"{col} recompute", f"column {col} not in fitness_history.csv (older log)")
+            continue
+        if not all(k in g0 for k in need):
+            rep.skip(f"{col} recompute", f"genomes.jsonl lacks {', '.join(need)}")
+            continue
+        bad = checked = 0
+        first = None
+        for row in run.hist:
+            gen, logged = row["generation"], row.get(col)
+            if gen not in by_gen or not isinstance(logged, (int, float)):
+                continue
+            val = fn(by_gen[gen])
+            checked += 1
+            vals = val if isinstance(val, set) else {val}
+            if not any(abs(v - logged) <= TOL_CSV * max(1.0, abs(v)) for v in vals):
+                bad += 1
+                first = first or (gen, logged, sorted(vals))
+        rep.check(f"{col} recompute", f"history[{col}] == {formula} over genomes.jsonl rows of that gen "
+                  f"(tol {TOL_CSV}, relative)",
+                  f"{bad} of {checked} generations mismatch"
+                  + (f"; first: gen {first[0]} logged {first[1]} vs recomputed {first[2]}" if first else ""),
+                  "consistent" if not bad else f"{bad} gens inconsistent",
+                  "PASS" if not bad and checked else ("SKIP" if not checked else "FAIL"), "zero mismatches")
+
+
+def check_contacts(run: Run, rep: Report):
+    rep.begin("12. Ball contacts as a learning signal")
+    if not has_contacts(run):
+        rep.skip("contacts slope", "genomes.jsonl has no contacts/returns (older log)")
+        return
+    rgens, rc, rr = contact_series(run)
+    for col, label, rec, ref_rand, ref_bi in (("mean_contacts", "contacts", rc, RANDOM_CONTACTS, BUILTIN_CONTACTS),
+                                              ("mean_returns", "returns", rr, RANDOM_RETURNS, BUILTIN_RETURNS)):
+        (gens, vals), src = _hist_or_recompute(run, col, lambda rec=rec: (rgens, rec))
+        if len(gens) < 3:
+            rep.skip(f"{col} slope", f"only {len(gens)} generations")
+            continue
+        b, se, t, df, p = ols(gens, vals)
+        rep.check(f"{col} slope", f"OLS {col}_g = a + b*g ({src}); t = b/SE(b)",
+                  f"n = {len(gens)}; b = {fmt(b, 5)}/gen; SE = {fmt(se, 5)}; t = {fmt(t, 2)}; df = {df}; p = {fmt(p, 4)}",
+                  f"{fmt(b * 100, 3)} {label}/episode per 100 generations",
+                  "PASS" if math.isfinite(t) and t > 2 else "WARN",
+                  f"PASS if t > 2 (agent touches/returns the ball more over time); WARN otherwise")
+        q = max(2, len(vals) // 4)
+        if len(vals) >= 2 * q:
+            first, last = vals[:q], vals[-q:]
+            diff, tw, dfw, pw = welch(first, last)
+            rep.check(f"{col} first vs last quarter",
+                      "Welch t: diff = mean(last q) - mean(first q); t = diff / sqrt(v1/n1 + v2/n2)",
+                      f"q = {q}; first mean {fmt(mean(first), 3)}; last mean {fmt(mean(last), 3)}; "
+                      f"t = {fmt(tw, 2)}; df = {fmt(dfw, 1)}; p = {fmt(pw, 4)}",
+                      f"diff {fmt(diff, 3)}", "PASS" if math.isfinite(tw) and tw > 2 else "WARN", "PASS if t > 2")
+            late = mean(last)
+            rep.check(f"{col} vs reference policies",
+                      f"late = mean of last {q} gens; ratio_random = late / {ref_rand}; "
+                      f"progress = (late - {ref_rand}) / ({ref_bi} - {ref_rand})",
+                      f"late {fmt(late, 3)}; random {ref_rand}; built-in policy {ref_bi}",
+                      f"x{fmt(late / ref_rand, 2)} random play; {fmt(100 * (late - ref_rand) / (ref_bi - ref_rand), 1)}% "
+                      f"of the way from random to the built-in policy", "INFO")
+
+    best = run.hist_col("best_raw_contacts")
+    if best and best[1]:
+        q = max(1, len(best[1]) // 4)
+        rep.check("best_raw_contacts start -> late", "mean(contacts) of the best-raw genome, first vs last quarter",
+                  f"first {q} gens {fmt(mean(best[1][:q]), 3)}; last {q} gens {fmt(mean(best[1][-q:]), 3)}",
+                  f"x{fmt(mean(best[1][-q:]) / RANDOM_CONTACTS, 2)} random play (late)", "INFO")
+
+    # contact-score link, pooled over the last quarter of generations
+    q = max(1, len(rgens) // 4)
+    late_gens = set(rgens[-q:])
+    eps = [(c, r, s) for g in run.genomes if g["gen"] in late_gens
+           for c, r, s in zip(g["contacts"], g["returns"], g.get("scores", []))]
+    if len(eps) < 3:
+        rep.skip("contacts vs score", "fewer than 3 episodes in the last quarter")
+        return
+    cs, rs, ss = ([float(e[i]) for e in eps] for i in range(3))
+    for name, xs in (("contacts", cs), ("returns", rs)):
+        r = pearson(xs, ss)
+        n = len(xs)
+        t = r * math.sqrt((n - 2) / (1 - r * r)) if math.isfinite(r) and abs(r) < 1 else float("nan")
+        rep.check(f"{name} vs score (episode level)",
+                  f"r = pearson({name}_i, score_i) over every episode of the last {q} gens; t = r sqrt((n-2)/(1-r^2))",
+                  f"n = {n}; mean {name} {fmt(mean(xs), 3)}; mean score {fmt(mean(ss), 3)}; r = {fmt(r, 3)}; "
+                  f"t = {fmt(t, 2)}; p = {fmt(t_sf2(t, n - 2), 4)}",
+                  f"r = {fmt(r, 3)} (positive = touching/returning the ball is what earns points)", "INFO")
+
+
+def _champion_val_behaviour(run: Run):
+    """Champion's validation rows (val_* fields); step-weighted act/sat, pooled contacts."""
+    key = champion_key(run.champ) if run.champ else None
+    if key is None or not run.val:
+        return None
+    rows = [v for v in run.val if v["key"] == key and "val_act_both" in v]
+    if not rows:
+        return None
+    steps = [sum(v["val_steps"]) for v in rows]
+    tot = sum(steps)
+    out = {"rows": len(rows), "episodes": sum(len(v["val_steps"]) for v in rows)}
+    for k in ("val_act_both", "val_out_sat", "val_act_idle", "val_act_fwd", "val_act_back", "val_act_jump"):
+        if all(k in v for v in rows):
+            out[k] = sum(v[k] * s for v, s in zip(rows, steps)) / tot
+    for k in ("val_contacts", "val_returns", "val_opp_contacts"):
+        if all(k in v for v in rows):
+            out[k] = mean([x for v in rows for x in v[k]])
+    return out
+
+
+def check_degenerate(run: Run, rep: Report):
+    rep.begin("13. Degenerate behaviour (cancel, juggling, saturation)")
+    cb = _champion_val_behaviour(run)
+    if cb and "val_act_both" in cb:
+        ab = cb["val_act_both"]
+        rep.check("champion stands still (fwd+back cancel)",
+                  "act_both = sum_rows val_act_both * sum(val_steps) / sum(val_steps) over the champion's validation rows",
+                  f"{cb['rows']} rows, {cb['episodes']} episodes; act_both {fmt(ab, 3)}"
+                  + (f"; act_fwd {fmt(cb['val_act_fwd'], 3)}, act_back {fmt(cb['val_act_back'], 3)}"
+                     if "val_act_fwd" in cb and "val_act_back" in cb else "")
+                  + (f"; contacts/ep {fmt(cb['val_contacts'], 2)}, returns/ep {fmt(cb.get('val_returns', float('nan')), 2)}"
+                     if "val_contacts" in cb else ""),
+                  "champion presses fwd+back together most of the time: it stands still" if ab > 0.5
+                  else f"cancels on {fmt(100 * ab, 1)}% of steps",
+                  "WARN" if ab > 0.5 else "PASS", "WARN if act_both > 0.5")
+    elif run.genomes and "act_both" in run.genomes[0] and champion_rows(run):
+        crow = champion_rows(run)
+        ab = _step_weighted(crow, "act_both")
+        rep.check("champion stands still (fwd+back cancel)",
+                  "act_both step-weighted over the champion's genomes.jsonl rows (no val_act_both logged)",
+                  f"{len(crow)} rows; act_both {fmt(ab, 3)}",
+                  "champion stands still" if ab > 0.5 else f"cancels on {fmt(100 * ab, 1)}% of steps",
+                  "WARN" if ab > 0.5 else "PASS", "WARN if act_both > 0.5")
+    else:
+        rep.skip("champion stands still (fwd+back cancel)",
+                 "no val_act_both / act_both for the champion (older log or champion.json missing)")
+
+    if has_contacts(run):
+        gens, c, r = contact_series(run)
+        ser = behavior_series(run)
+        to = dict(zip(ser["gen"], ser["timeout_frac"]))
+        q = max(1, len(gens) // 4)
+        late_c, late_r = mean(c[-q:]), mean(r[-q:])
+        ratio = late_r / late_c if late_c > 0 else float("nan")
+        to_first = mean([to[g] for g in gens[:q]])
+        to_last = mean([to[g] for g in gens[-q:]])
+        high = late_c >= 3 * RANDOM_CONTACTS
+        juggling = high and math.isfinite(ratio) and ratio < 0.2 and to_last > to_first
+        rep.check("juggling exploit (touch without returning)",
+                  f"last {q} gens: contacts/ep, returns/ep, ratio = returns/contacts; timeout_frac first vs last quarter; "
+                  f"flag if contacts >= 3 x random ({3 * RANDOM_CONTACTS:.1f}) and ratio < 0.2 and timeouts rising",
+                  f"contacts {fmt(late_c, 3)}; returns {fmt(late_r, 3)}; ratio {fmt(ratio, 3)}; "
+                  f"timeout_frac {fmt(to_first, 3)} -> {fmt(to_last, 3)}",
+                  "agent keeps the ball on its side to run out the clock" if juggling
+                  else ("contacts not high enough to juggle" if not high else "no juggling signature"),
+                  "WARN" if juggling else "PASS", "WARN on the signature above")
+    else:
+        rep.skip("juggling exploit (touch without returning)", "no contacts/returns (older log)")
+
+    sat = run.hist_col("mean_sat")
+    if not (sat and sat[1]) and run.genomes and "out_sat" in run.genomes[0]:
+        by_gen = run.genomes_by_gen()
+        sat = (list(by_gen), [_step_weighted(p, "out_sat") for p in by_gen.values()])
+    if sat and sat[1]:
+        q = max(1, len(sat[1]) // 4)
+        late = mean(sat[1][-q:])
+        rep.check("output saturation", "mean_sat = fraction of network outputs < 0.02 or > 0.98; last-quarter mean",
+                  f"first {q} gens {fmt(mean(sat[1][:q]), 3)}; last {q} gens {fmt(late, 3)}",
+                  (f"{fmt(100 * late, 1)}% of outputs are all-or-nothing: most small weight mutations change "
+                   "no action, so the fitness landscape is flat locally") if late > 0.8
+                  else f"{fmt(100 * late, 1)}% saturated", "INFO", "note if > 0.8")
+    else:
+        rep.skip("output saturation", "no mean_sat column or out_sat field (older log)")
+    cancel = run.hist_col("mean_cancel")
+    if cancel and cancel[1]:
+        q = max(1, len(cancel[1]) // 4)
+        rep.check("population fwd+back cancel", "mean_cancel = step-weighted act_both over the population",
+                  f"first {q} gens {fmt(mean(cancel[1][:q]), 3)}; last {q} gens {fmt(mean(cancel[1][-q:]), 3)}",
+                  f"{fmt(100 * mean(cancel[1][-q:]), 1)}% of late steps press both directions (no movement)", "INFO")
+
+
+def check_search_health(run: Run, rep: Report):
+    rep.begin("14. Search health (structure drift, NEAT stagnation)")
+    s = run.hist_col("mean_conns")
+    src = "fitness_history.csv"
+    if not (s and s[1]) and run.genomes and "conns" in run.genomes[0]:
+        cs = complexity_series(run)
+        s, src = (cs["gen"], cs["conns"]), "recomputed from genomes.jsonl"
+    if s and len(s[1]) >= 3:
+        b, se, t, df, p = ols(*s)
+        c0, c1 = s[1][0], s[1][-1]
+        change = (c1 - c0) / c0 if c0 else float("nan")
+        drift = math.isfinite(change) and change < -0.5
+        rep.check("mean_conns trend", f"OLS mean_conns_g = a + b*g ({src}); change = (end - start) / start",
+                  f"start {fmt(c0, 2)} -> end {fmt(c1, 2)}; b = {fmt(b, 4)}/gen; t = {fmt(t, 2)}; p = {fmt(p, 4)}",
+                  f"{fmt(100 * change, 1)}% connections"
+                  + (": structural drift toward deletion (delete-conn outpaces add-conn under weak selection)"
+                     if drift else ""),
+                  "WARN" if drift else "PASS", "WARN if mean_conns falls by > 50%")
+    else:
+        rep.skip("mean_conns trend", "no mean_conns column and no conns field")
+
+    if run.stdout is None:
+        rep.skip("NEAT stagnation / extinction", "stdout.log missing (older run)")
+        return
+    lines = run.stdout.splitlines()
+    stagnant = [ln for ln in lines if "stagnat" in ln.lower()]
+    all_extinct = sum(1 for ln in lines if "all species extinct" in ln.lower())
+    totals = []
+    for ln in lines:
+        if ln.strip().lower().startswith("total extinctions:"):
+            try:
+                totals.append(int(ln.split(":", 1)[1]))
+            except ValueError:
+                pass
+    rep.check("NEAT stagnation / extinction (stdout.log)",
+              "count lines containing 'stagnat'; last 'Total extinctions: N'; count 'All species extinct'",
+              f"{len(lines):,} lines; stagnation lines {len(stagnant)}; final total extinctions "
+              f"{totals[-1] if totals else 'n/a'} ({len(totals)} reports); 'all species extinct' {all_extinct}"
+              + (f"; first: {stagnant[0].strip()!r}" if stagnant else ""),
+              f"{len(stagnant)} species removed for stagnation, {totals[-1] if totals else 0} total extinctions",
+              "INFO")
 
 
 # --------------------------------------------------------------------------
@@ -1203,7 +1596,7 @@ def _cum_steps_axis(ax, run: Run):
 
 def plot_fitness(run: Run, out: Path):
     fig, ax = plt.subplots(figsize=(9, 5))
-    shaped = run.bonus() > 0
+    shaped = run.bonus() > 0 or run.return_bonus() > 0
     for col, label, style in (("best_fitness", "train best (selection)" if shaped else "train best", "-"),
                               ("mean_fitness", "train mean (selection)" if shaped else "train mean", "-"),
                               ("best_raw", "train best raw", ":"), ("mean_raw", "train mean raw", ":"),
@@ -1249,6 +1642,11 @@ def plot_behavior(run: Run, out: Path):
             if not all(math.isnan(v) for v in ser[k]):
                 ax.plot(ser["gen"], ser[k], label=k)
         ax.plot(ser["gen"], ser["timeout_frac"], "k--", label="timeout frac")
+        for col, label, style in (("mean_cancel", "fwd+back cancel (act_both)", "-."),
+                                  ("mean_sat", "outputs saturated", ":")):
+            s = run.hist_col(col)
+            if s and s[1]:
+                ax.plot(s[0], s[1], style, label=label, lw=1.5)
     ax.set_ylim(-0.02, 1.02)
     ax.set_xlabel("generation")
     ax.set_ylabel("fraction (population mean)")
@@ -1256,6 +1654,39 @@ def plot_behavior(run: Run, out: Path):
     ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(out / "behavior.png", dpi=120)
+    plt.close(fig)
+
+
+def plot_contacts(run: Run, out: Path):
+    """mean_contacts, mean_returns, best_raw_contacts per generation; skipped on older logs."""
+    series = {}
+    for col in ("mean_contacts", "mean_returns", "best_raw_contacts"):
+        s = run.hist_col(col)
+        if s and s[1]:
+            series[col] = s
+    if not series and has_contacts(run):
+        gens, c, r = contact_series(run)
+        series = {"mean_contacts": (gens, c), "mean_returns": (gens, r)}
+    if not series:
+        return
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    for col, label, style in (("mean_contacts", "mean contacts / episode", "-"),
+                              ("mean_returns", "mean returns / episode", "-"),
+                              ("best_raw_contacts", "contacts of best-raw genome", ":")):
+        if col in series:
+            ax.plot(series[col][0], series[col][1], style, label=label, lw=1.5)
+    ax.axhline(RANDOM_CONTACTS, color="grey", ls="--", lw=1, label=f"random play contacts ({RANDOM_CONTACTS})")
+    ax.set_xlabel("generation")
+    ax.set_ylabel("per episode")
+    ax.set_ylim(bottom=0)
+    ax.set_title(f"Ball contacts (built-in policy on our side: ~{BUILTIN_CONTACTS:g} contacts, "
+                 f"{BUILTIN_RETURNS:g} returns)", fontsize=9)
+    ax.legend(loc="upper left", fontsize=8)
+    ax.grid(alpha=0.3)
+    ax.margins(x=0)
+    _cum_steps_axis(ax, run)
+    fig.tight_layout()
+    fig.savefig(out / "contacts.png", dpi=120)
     plt.close(fig)
 
 
@@ -1328,9 +1759,14 @@ def main() -> int:
     run_check(check_learning, run, rep)
     run_check(check_population, run, rep)
     run_check(check_shaping, run, rep)
+    run_check(check_behavior_logs, run, rep)
+    run_check(check_contacts, run, rep)
+    run_check(check_degenerate, run, rep)
+    run_check(check_search_health, run, rep)
 
     for plot in (lambda: plot_fitness(run, out), lambda: plot_seed_noise(deltas, out),
-                 lambda: plot_behavior(run, out), lambda: plot_complexity(run, out)):
+                 lambda: plot_behavior(run, out), lambda: plot_complexity(run, out),
+                 lambda: plot_contacts(run, out)):
         try:
             plot()
         except Exception as exc:
