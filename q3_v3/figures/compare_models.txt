@@ -1,0 +1,9 @@
+model                   score     model error vs clean, mean per pixel
+                                  interior          rim   background   share of error on the rim
+our model             -0.0096      0.00066      0.00267      0.00001      81%
+shipped best (a02)    -0.0146      0.01866      0.02306      0.00248      35%
+hint best (b07)       -0.0097      0.00078      0.00375      0.00000      85%
+Luna best (l03)       -0.0096      0.00065      0.00242      0.00001      79%
+
+pixels per region: interior 6%, rim 8%, background 86%
+noise variance (what every model pays on top): 0.0100

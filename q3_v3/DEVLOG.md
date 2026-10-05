@@ -389,3 +389,26 @@ timeout dependence on load goes in the report's limits.
   little; all 26 Luna timeouts blamed on load); B's decoder loss shown as
   "—" when it was measured; "reached the floor" for two runs at −0.0114 and
   −0.0118.
+
+## 2026-10-05 — watching what both do (after the first merge)
+
+The brief says "race your model against it, watch what both do". The race
+numbers were in the report, but I had generated the reconstruction plots
+without looking at them. Now `compare_models.py` puts eight PUBLIC images
+through our model and the best shipped, hint and Luna champions
+(`figures/compare_models.png`), and measures each model's error against
+the *clean* image by region.
+
+My first read of the pictures was "the shipped champion's errors sit in
+rings on the rim". The numbers say otherwise: a02's error is spread
+everywhere (interior 0.0187, rim 0.0231, background 0.0025 per pixel; 35%
+of it on the rim), while the searching models have almost nothing left
+except at the rim (79–85% of their small error). The rings are real on a
+few images, but they are not the story; the blur is.
+
+The blur is a hedge: with a02's own encoder, the generator's sharp decoder
+scores −0.0157 against its blurred −0.0146; a04 −0.0250 against −0.0178;
+a05 −0.0174 against −0.0165 (from `decompose_champions.py`'s "true decoder"
+column). Added to report §1 and finding.md. Also: Q3 went into main by a
+direct merge (`5bbad5c`) where Q1 and Q2 used PRs; this addition goes
+through PR #5.

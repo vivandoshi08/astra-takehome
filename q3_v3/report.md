@@ -62,6 +62,33 @@ own `run_meta.json`, by the same evaluator.
 | best champion, + hint (b07) | −0.0097 | −0.0097 |
 | best champion, GPT-6 Luna (l03) | −0.0096 | −0.0097 |
 
+**What both actually do** (`compare_models.py`; `figures/compare_models.png`
+shows eight PUBLIC images through each model, with error maps on one colour
+scale). Our model, the best hint champion and the best Luna champion draw
+crisp ellipses of the right size and tilt, and their error maps are noise.
+The best shipped champion (a02) draws soft, blurred ellipses. It makes a
+small ellipse too large, which leaves a bright ring of error around it, and
+it tilts a round one. Measured against the *clean* image, so that only each
+model's own mistakes remain:
+
+| model | error per pixel: interior | rim | background | share of its error on the rim |
+|---|---|---|---|---|
+| our model | 0.0007 | 0.0027 | 0.00001 | 81% |
+| shipped best (a02) | **0.0187** | **0.0231** | **0.0025** | 35% |
+| hint best (b07) | 0.0008 | 0.0038 | 0.00000 | 85% |
+| Luna best (l03) | 0.0007 | 0.0024 | 0.00001 | 79% |
+
+The shipped champion is wrong everywhere: its interior error is 28× ours,
+and its blur spills light into the background. The three models that search
+have little left except at the rim, the hardest pixels.
+
+The blur is not an accident. Given a02's own encoder, the generator's sharp
+decoder scores worse than a02's blurred one (−0.0157 against −0.0146), and
+the same holds for a04 (−0.0250 against −0.0178) and a05 (−0.0174 against
+−0.0165). A soft rim hedges against an encoder that misjudges size. Haiku
+improved the drawing to hide the measuring, the same story the finding
+tells.
+
 **Where its errors come from.** Almost entirely the pixel noise.
 
 - **The floor.** A six-number fit can also soak up the noise along the
