@@ -177,3 +177,17 @@ parameters) it is better on average (−1.3e-5 per image): 12/256 images
 better by >1e-4, 1/256 worse (img 185, a small ellipse, a/b 1.44). So
 almost nothing is left to local minima; the remaining error is the noise.
 4 ms per image; deterministic.
+
+## 2026-10-04 — VAE verdict control: predictions (before running)
+
+`vae_verdict.py` retrains the incumbent's exact recipe (hidden 64, β 0.01,
+seed 0, 4000 epochs) on fresh sets of 128, 512 and 2048 images, and scores
+each on its own training set, PUBLIC and HELD_OUT. Predictions:
+
+- n=128 fresh: past the honest optimum on its **own** training images
+  (around −0.005, like the shipped one on PUBLIC), but PUBLIC ≈ HELD_OUT ≈
+  −0.035. Noise fraction on its training set ~0.6, on HELD_OUT ~0.02.
+- As n grows, own-train and PUBLIC/HELD_OUT scores converge, towards the
+  −0.0135 measured for 2048 images in the audit; noise fraction on the
+  training set falls toward 0.02.
+- No model beats −0.0096 on images it was not trained on.
