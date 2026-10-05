@@ -173,12 +173,16 @@ class BudgetReached(Exception):
 class RunRecorder(neat.reporting.BaseReporter):
     """Writes the per-generation logs, tracks the champion, enforces the budget."""
 
-    def __init__(self, run_dir: Path, limit: int, per_process_cap: int, workers: int):
+    def __init__(self, run_dir: Path, limit: int, per_process_cap: int, workers: int,
+                 snapshot_every: int = 0):
         self.run_dir = run_dir
         self.budget_log = run_dir / "budget_log.jsonl"
         self.limit = limit
         self.per_process_cap = per_process_cap
         self.workers = workers
+        self.snapshot_every = snapshot_every
+        self.next_snapshot = snapshot_every
+        self.validated_genomes: dict = {}           # key -> genome, this gen's validated
         self.history: list[list] = []
         self.episodes: dict[int, list[dict]] = {}  # genome key -> this gen's episodes
         self.validated: list[dict] = []             # this gen's validation rows
@@ -255,6 +259,9 @@ class RunRecorder(neat.reporting.BaseReporter):
         ])
         self._last_time = now
         self.write_outputs()
+        while self.snapshot_every and spent >= self.next_snapshot:
+            self.write_snapshot(f"{self.next_snapshot / 1_000_000:g}M", gen, spent)
+            self.next_snapshot += self.snapshot_every
         self._gen += 1
 
         h = dict(zip(HISTORY_COLUMNS, self.history[-1]))
@@ -276,6 +283,22 @@ class RunRecorder(neat.reporting.BaseReporter):
                 or busiest + 1.5 * gen_steps / self.workers > self.per_process_cap):
             print("  [budget] another generation would not fit — stopping", flush=True)
             raise BudgetReached
+
+    def write_snapshot(self, label: str, gen: int, spent: int) -> None:
+        """Champion so far + this generation's best validated genome, for
+        replay_snapshots.py (replays at fixed step intervals)."""
+        d = self.run_dir / "snapshots" / label
+        d.mkdir(parents=True, exist_ok=True)
+        if self.champion is not None:
+            (d / "champion.pkl").write_bytes(pickle.dumps(self.champion))
+            (d / "champion.json").write_text(json.dumps(
+                {**self.champion_meta, "snapshot_steps": spent, "snapshot_gen": gen}, indent=2))
+        best = max(self.validated, key=lambda r: r["val_mean"])
+        (d / "gen_best.pkl").write_bytes(pickle.dumps(self.validated_genomes[best["key"]]))
+        (d / "gen_best.json").write_text(json.dumps(
+            {"key": best["key"], "generation": gen, "val_mean": best["val_mean"],
+             "train_fitness": best["train_fitness"], "snapshot_steps": spent}, indent=2))
+        print(f"  [snapshot] {label}: champion + gen best saved to {d}", flush=True)
 
     def write_outputs(self) -> None:
         """Rewritten every generation so a crash or Ctrl-C loses nothing."""
@@ -346,6 +369,8 @@ def main() -> int:
                     help="selection fitness per episode += B * steps/3000 (B < 1)")
     ap.add_argument("--return-bonus", type=float, default=0.0,
                     help="selection fitness per episode += R * min(returns, cap)")
+    ap.add_argument("--snapshot-every", type=int, default=10_000_000,
+                    help="save champion + generation best every N steps (0 = off); see replay_snapshots.py")
     ap.add_argument("--return-cap", type=int, default=9,
                     help="returns per episode that earn the bonus")
     args = ap.parse_args()
@@ -378,7 +403,7 @@ def main() -> int:
     pop = neat.Population(config, seed=args.seed)
     pop.add_reporter(neat.StdOutReporter(False))
     per_process_cap = max(1, args.budget // max(1, args.workers))
-    recorder = RunRecorder(run_dir, args.budget, per_process_cap, args.workers)
+    recorder = RunRecorder(run_dir, args.budget, per_process_cap, args.workers, args.snapshot_every)
     pop.add_reporter(recorder)
 
     stopped_early = False
@@ -401,6 +426,7 @@ def main() -> int:
         top = sorted((g for _, g in genomes), key=lambda g: g.fitness, reverse=True)[:args.val_top]
         val_results = play_all(pool, top, vseeds)
         recorder.validated = []
+        recorder.validated_genomes = {g.key: copy.deepcopy(g) for g in top}
         for genome, eps in zip(top, val_results):
             val_mean = statistics.mean(e["score"] for e in eps)
             recorder.validated.append({

@@ -12,6 +12,7 @@ Every run writes enough to re-derive every number in the report.
 | `genomes.jsonl` | genome per generation | `gen, key, species, nodes, conns, fitness, raw_fitness, scores[], steps[], points_for[], points_against[], timeouts, act_fwd, act_back, act_jump, act_idle, act_both, out_sat, contacts[], opp_contacts[], returns[]` |
 | `validation.jsonl` | validated genome per generation | `gen, key, train_fitness, val_mean, val_scores[], val_steps[]`, plus `val_`-prefixed versions of the genomes.jsonl episode aggregates (`val_contacts[]`, `val_act_jump`, ...) |
 | `champion.pkl` | run | genome with the best **validation** mean (not training fitness) |
+| `snapshots/<N>M/` | every `--snapshot-every` steps (10M) | `champion.pkl/json` (best val so far) and `gen_best.pkl/json` (that generation's best validated genome); `replay_snapshots.py` turns them into `snapshots/progress.md` + GIFs on fixed held-out seeds |
 | `champion.json` | run | champion key, generation found, train fitness, val mean, nodes, conns |
 
 `fitness_history.csv` columns: `generation, best_fitness, mean_fitness` (scaffold),
