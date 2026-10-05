@@ -1,0 +1,11 @@
+config: runs/full100m_direction_s0/config.ini
+100 held-out episodes (seeds 1000000..1000099)
+  mean -0.160  sd 1.032
+  95% CI (t)         [-0.365, +0.045]
+  95% CI (bootstrap) [-0.350, +0.050]
+  W/D/L 19/45/36   score counts {'-3.0': 1, '-2.0': 5, '-1.0': 30, '0.0': 45, '1.0': 14, '2.0': 2, '3.0': 3}
+  points won 39  lost 55
+  episode length mean 3000  timeouts (3000 steps) 100
+  per episode: contacts 64.31  returns 25.52  opponent contacts 41.44  | outputs saturated 0.49
+  movement: 612 units/ep, 104.0 jumps/ep, 0.50 of jumps hit the ball | time at net/mid/back 0.75/0.17/0.08
+  action fractions fwd 0.67  back 0.18  jump 0.99  idle 0.00  both 0.00
