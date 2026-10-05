@@ -1,0 +1,13 @@
+Fraction of the image's own noise that the reconstruction reproduces
+  f = <recon - clean, noise> / <noise, noise>; an honest 6-param fit is ~6/256 = 0.023
+  mean       PUBLIC f=+0.016 MSE-vs-clean=0.03588   HELD_OUT f=+0.009 MSE-vs-clean=0.03466
+  pca (k=6)  PUBLIC f=+0.080 MSE-vs-clean=0.00905   HELD_OUT f=+0.028 MSE-vs-clean=0.01015
+  vae (k=6)  PUBLIC f=+0.588 MSE-vs-clean=0.00679   HELD_OUT f=+0.024 MSE-vs-clean=0.02516
+
+A student.py that just returns baselines.vae_fns() (trained on PUBLIC):
+  race score on PUBLIC -0.0051 -> Bonus tier (>= -0.0105): True; on HELD_OUT -0.0346
+  wrote latents_seed.png
+  wrote latents_vae.png
+  wrote traversal_seed.png
+  wrote loss.png
+  wrote vae_heldout.png

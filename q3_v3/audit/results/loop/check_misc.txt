@@ -1,0 +1,24 @@
+=== A. sanity_check.sh cap test: TokenBudget(limit=1_000) + MockClient
+  trips after 1 call(s): token cap reached: 1,072 / 1,000 after 1 calls  (first call alone exceeds the cap, so the test only proves 'charge() raises')
+
+=== B. run(budget=None) creates TokenBudget() -> ./token_log.jsonl in CWD
+  files in CWD afterwards: ['token_log.jsonl']; lines: 4
+
+=== C. loop.py length (README: 'about 150 lines')
+  total 229, non-blank 190, code only (no blank/comment/docstring) 166
+
+=== D. budget edge cases
+  main() --cap default 500_000 == budget.DEFAULT_CAP 500000: True (duplicated literal)
+  TokenBudget(limit=0).summary() -> ZeroDivisionError: division by zero
+  charge(None, 10) -> TypeError (int() argument must be a string, a bytes-like object or a real number, not 'NoneType'); nothing logged
+
+=== E. a broken SEED is skipped silently
+  stdout: ['gen   0  best -0.0162  valid 4/4  tokens 3,173']
+  run_log gens: [0] (no seed line, no warning)
+
+=== F. names visible to candidate code
+  __name__ == '__main__': False (so `if __name__ == '__main__':` test code in an answer does not run); __name__ resolves to 'builtins (via __builtins__)'
+
+=== G. dead code: does any client raise BudgetExhausted?
+  evo/llm_client.py: mentions BudgetExhausted/budget: False
+  evo/mock_client.py: mentions BudgetExhausted/budget: False

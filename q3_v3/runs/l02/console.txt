@@ -1,0 +1,17 @@
+task=ellipses client=openrouter:openai/gpt-6-luna cap=500,000
+baselines: {'mean': -0.0454, 'pca (k=6)': -0.0173, 'vae (k=6)': -0.0051}
+  seed     score -0.0272
+  gen   0  best -0.0120  valid 4/4  tokens 10,468
+  gen   1  best -0.0097  valid 4/4  tokens 29,994
+  gen   2  best -0.0097  valid 1/4  tokens 51,943
+  gen   3  best -0.0097  valid 3/4  tokens 74,624
+  gen   4  best -0.0097  valid 3/4  tokens 99,197
+  gen   5  best -0.0097  valid 2/4  tokens 121,555
+  gen   6  best -0.0097  valid 1/4  tokens 146,246
+
+[interrupted]
+
+best score: -0.0097
+budget    : 31 calls, 114,473 in + 50,973 out = 165,446 tokens (33% of cap)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q3_v3/runs/l02/best.py
+held-out  : -inf (timeout: encode > 180s)

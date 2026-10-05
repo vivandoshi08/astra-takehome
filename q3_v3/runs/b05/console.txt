@@ -1,0 +1,20 @@
+task=ellipses client=openrouter:anthropic/claude-haiku-4.5 cap=500,000
+baselines: {'mean': -0.0454, 'pca (k=6)': -0.0173, 'vae (k=6)': -0.0051}
+  seed     score -0.0272
+  gen   0  best -0.0229  valid 4/4  tokens 9,155
+  gen   1  best -0.0229  valid 4/4  tokens 24,759
+  gen   2  best -0.0199  valid 4/4  tokens 42,376
+  gen   3  best -0.0199  valid 2/4  tokens 62,665
+  gen   4  best -0.0180  valid 4/4  tokens 83,473
+  gen   5  best -0.0173  valid 4/4  tokens 106,078
+  gen   6  best -0.0173  valid 4/4  tokens 131,240
+  gen   7  best -0.0169  valid 4/4  tokens 157,644
+  gen   8  best -0.0169  valid 4/4  tokens 184,030
+  gen   9  best -0.0169  valid 3/4  tokens 211,590
+  gen  10  best -0.0167  valid 3/4  tokens 239,604
+  gen  11  best -0.0167  valid 3/4  tokens 267,527
+
+best score: -0.0167
+budget    : 48 calls, 197,124 in + 70,403 out = 267,527 tokens (54% of cap)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q3_v3/runs/b05/best.py
+held-out  : -0.0169

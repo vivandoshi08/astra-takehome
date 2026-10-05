@@ -1,0 +1,37 @@
+== encode on odd images ==
+  all zeros                              z finite True, decode finite True, mse 3.561e-23, z=[7.5, 7.5, 2.999, 1.999, 1.047, 0.0]
+  all ones                               z finite True, decode finite True, mse 0, z=[7.5, 7.5, 11.364, 10.888, 1.568, 1.0]
+  all 0.31 (just above threshold)        z finite True, decode finite True, mse 0, z=[7.5, 7.5, 11.098, 11.124, -1.377, 0.31]
+  all -1                                 z finite True, decode finite True, mse 0, z=[7.494, 7.5, 5417.163, 8.0, 0.0, -1.0]
+  single bright pixel (0,0)              z finite True, decode finite True, mse 1.335e-25, z=[-0.066, -0.065, 0.568, 0.577, 0.773, 1.018]
+  single bright pixel (15,15)            z finite True, decode finite True, mse 1.873e-25, z=[15.066, 15.065, 0.568, 0.577, 0.773, 1.018]
+  single bright pixel (7,8)              z finite True, decode finite True, mse 6.02e-10, z=[8.0, 7.001, 0.497, 0.495, 1.31, 1.006]
+  checkerboard 0/1                       z finite True, decode finite True, mse 0.25, z=[7.5, 7.5, 11.506, 11.53, -0.595, 0.5]
+  horizontal bar row 8                   z finite True, decode finite True, mse 1.173e-12, z=[7.446, 8.026, 5551.263, 0.474, -0.0, 1.055]
+  two blobs (corners)                    z finite True, decode finite True, mse 0.05185, z=[7.5, 7.5, 11.952, 1.757, 0.785, 0.38]
+  ellipse cut by border                  z finite True, decode finite True, mse 1.595e-28, z=[0.5, 8.0, 4.0, 2.0, 0.3, 0.9]
+  tiny ellipse a=b=0.5                   z finite True, decode finite True, mse 6.02e-10, z=[8.0, 8.001, 0.497, 0.495, 1.31, 1.006]
+  huge 1e6 everywhere                    z finite True, decode finite True, mse 0, z=[7.5, 7.5, 11.107, 11.106, 1.513, 1000000.0]
+  1e150 everywhere                       z finite True, decode finite True, mse 1.787e+296, z=[7.5, 7.5, 11.132, 11.058, 1.571, 1.0134727356459708e+150]
+  1e160 everywhere (squares overflow)    EXCEPTION AttributeError: 'NoneType' object has no attribute 'copy'
+  negative ellipse A=-0.8 + noise        z finite True, decode finite True, mse 0.008206, z=[8.042, 8.013, 4.041, 1.958, 0.265, -0.834]
+  pure noise sigma 0.1 seed 0            z finite True, decode finite True, mse 0.00985, z=[11.052, 12.799, 0.466, 0.449, 1.485, 0.41]
+  pure noise sigma 1 seed 0              z finite True, decode finite True, mse 1.014, z=[-23.313, 3.216, 45.17, 14.743, -0.493, 0.292]
+  pure noise sigma 0.1 seed 1            z finite True, decode finite True, mse 0.008177, z=[12.019, 6.146, 5.792, 1.827, -0.655, -0.04]
+  pure noise sigma 1 seed 1              z finite True, decode finite True, mse 0.8207, z=[6.587, 9.304, 7.373, 10.56, 0.859, -0.123]
+  pure noise sigma 0.1 seed 2            z finite True, decode finite True, mse 0.009744, z=[8.115, 4.795, 3.875, 2.063, -1.241, 0.054]
+  pure noise sigma 1 seed 2              z finite True, decode finite True, mse 0.9896, z=[10.808, 5.746, 0.585, 5.908, -1.563, 0.524]
+  NaN in one pixel (invalid input)       EXCEPTION AttributeError: 'NoneType' object has no attribute 'copy'
+
+== pure-noise images through the evaluator (1000 images, sigma 0.1) ==
+  score -0.009624  (decode-to-zero would score -0.010020)
+
+== decode on extreme finite latents (200k random + hand-picked) ==
+  decode non-finite or raised on 0 of 200011 latents
+
+== can best_p stay None on a VALID-range image? cost is SSE of bounded values: ==
+  all 2100 start costs finite; max start cost 3.432
+
+== evaluator with the invalid-input images ==
+  1e160: evaluate -> -inf
+  NaN pixel: evaluate -> -inf

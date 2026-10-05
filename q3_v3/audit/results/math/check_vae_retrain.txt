@@ -1,0 +1,4 @@
+shipped cache: PUBLIC -0.005051  HELD_OUT -0.034619
+retrain 0: 2.8s  PUBLIC -0.005051  HELD_OUT -0.034619  max|w - w_shipped| = 7.133e-15  bitwise identical to shipped: False
+retrain 1: 2.9s  PUBLIC -0.005051  HELD_OUT -0.034619  max|w - w_shipped| = 7.133e-15  bitwise identical to shipped: False
+run0 vs run1: bitwise identical True, max diff 0.000e+00

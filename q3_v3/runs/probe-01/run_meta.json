@@ -1,0 +1,9 @@
+{
+  "client": "openrouter:anthropic/claude-haiku-4.5",
+  "model": "anthropic/claude-haiku-4.5",
+  "max_tokens": 2048,
+  "seed_score": -0.027190203015196764,
+  "provider_usage_before": 0,
+  "provider_usage_after": 0,
+  "budget": "2 calls, 2,447 in + 2,298 out = 4,745 tokens (9% of cap)"
+}

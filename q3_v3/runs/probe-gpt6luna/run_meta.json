@@ -1,0 +1,9 @@
+{
+  "client": "openrouter:openai/gpt-6-luna",
+  "model": "openai/gpt-6-luna",
+  "max_tokens": 2048,
+  "seed_score": -0.027190203015196764,
+  "provider_usage_before": 4.875946,
+  "provider_usage_after": 5.5045218,
+  "budget": "2 calls, 2,350 in + 3,768 out = 6,118 tokens (12% of cap)"
+}

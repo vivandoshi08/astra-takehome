@@ -1,0 +1,50 @@
+
+========================================================================
+1. Mean and PCA baselines: fit on PUBLIC (shipped) vs fit elsewhere
+========================================================================
+  mean, shipped (fit on PUBLIC)      PUBLIC -0.04540   HELD_OUT -0.04442
+  mean, fit on HELD_OUT              PUBLIC -0.04583   HELD_OUT -0.04399
+  mean, fit on train_images(2048)    PUBLIC -0.04580   HELD_OUT -0.04411
+  pca, shipped (fit on PUBLIC)       PUBLIC -0.01731   HELD_OUT -0.01953
+  pca, fit on HELD_OUT               PUBLIC -0.01909   HELD_OUT -0.01791
+  pca, fit on train_images(2048)     PUBLIC -0.01853   HELD_OUT -0.01862
+  pca, fit on a fresh 128 (seed 2024) PUBLIC -0.01971   HELD_OUT -0.01996
+  PCA in-sample advantage on PUBLIC: +0.00122 (T2 'beats PCA' threshold is inflated by this much)
+
+========================================================================
+2. VAE cache: stored config vs the VAE_* constants
+========================================================================
+  vae_k6.npz: keys ['beta', 'dW0', 'dW1', 'db0', 'db1', 'eW0', 'eW1', 'eb0', 'eb1', 'hidden', 'meta']
+  meta (ambient, latent, seed) = [256, 6, 0]; beta = [0.01]; hidden = [64]
+  constants: VAE_HIDDEN=(64,) VAE_BETA=0.01 VAE_EPOCHS=4000 VAE_SEED=0 LATENT=6
+  epochs stored in the file: False; training-set identity stored: False (no key) -> the default path is returned without any check (baselines.py:67-71)
+  shapes: {'eW0': (256, 64), 'eb0': (64,), 'eW1': (64, 12), 'eb1': (12,), 'dW0': (6, 64), 'db0': (64,), 'dW1': (64, 256), 'db1': (256,)}
+  (a) VAE_BETA edited to 0.05: vae_model() silently LOADS vae_k6.npz; returned model.beta = 0.01 (the old config), no retrain, no warning
+      VAE_EPOCHS edited to 100: also loads vae_k6.npz (epochs not stored at all)
+  (b) baselines.VAE_BETA = 0.5 at runtime: vae_model() retrains with beta=0.01 and writes ['vae_h64_k6_b0.01_e4000_s0.npz'] into the cache dir (this is how this audit accidentally created a file in the repo on its first run)
+
+========================================================================
+3. Cache filename logic for non-default configs (no training, no writes)
+========================================================================
+  {}                       -> vae_k6.npz
+  {'hidden': [64]}         -> vae_h64_k6_b0.01_e4000_s0.npz
+  {'hidden': (64, 32)}     -> vae_h64x32_k6_b0.01_e4000_s0.npz
+  {'hidden': ()}           -> vae_h_k6_b0.01_e4000_s0.npz
+  {'beta': 1e-05}          -> vae_h64_k6_b1e-05_e4000_s0.npz
+  {'beta': 0.01}           -> vae_k6.npz
+  {'epochs': 4000.0}       -> vae_k6.npz
+  {'latent': 3}            -> vae_h64_k3_b0.01_e4000_s0.npz
+  hidden=64 (int)          -> TypeError: 'int' object is not iterable
+  NOTE: baselines.vae_model mirrors this logic exactly (copied from baselines.py:65-69)
+  NOTE: hidden=[64] (a list) is the default config but misses the default cache and trains + writes a second file vae_h64_k6_b0.01_e4000_s0.npz into baseline_cache/
+  NOTE: vae_model(... cache=True) for any non-default config writes into q3_v3/baseline_cache/
+
+========================================================================
+4. VAE trained on fresh data (train_images, 2048) — the leak control
+========================================================================
+  vae fit on train_images, 250 ep (3s) PUBLIC -0.01453   HELD_OUT -0.01437
+  vae fit on train_images, 1000 ep (11s) PUBLIC -0.01362   HELD_OUT -0.01346
+  vae fit on HELD_OUT (4000 ep)      PUBLIC -0.02560   HELD_OUT -0.00862
+  vae, shipped (fit on PUBLIC)       PUBLIC -0.00505   HELD_OUT -0.03462
+
+  shipped VAE posterior on PUBLIC: pre-clip logvar range [-7.53, -5.64], fraction clipped at +-10: 0.0000; posterior std median 0.0415; mu std per dim [1.598, 1.667, 1.359, 1.598, 1.163, 1.492]

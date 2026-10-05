@@ -1,0 +1,134 @@
+
+========================================================================
+1. render() matches its own formula on the grid; pixel-centre convention
+========================================================================
+max |render_xy - data.render| over PUBLIC+HELD_OUT params: 0.00e+00
+pixel (row i, col j) sits at (x=j, y=i), integer coordinates 0..15; image centre is (7.5, 7.5)
+render(PUBLIC_PARAMS) == PUBLIC_CLEAN: True
+max |SEED.decode(p) - data.render(p)| over PUBLIC+HELD_OUT params: 5.55e-16
+
+========================================================================
+2. Rim ramp width (docstring: 'exactly one pixel along the minor axis')
+========================================================================
+  a=4.4 b=1.4: major-axis ramp from r=2.8286 to 5.9714  width=3.1428 px (theory: a/b = 3.1429)
+  a=4.4 b=1.4: minor-axis ramp from r=0.9000 to 1.9000  width=1.0000 px (theory: 1)
+  a=3.0 b=3.0: major-axis ramp from r=2.5000 to 3.5000  width=1.0000 px (theory: a/b = 1.0000)
+  a=3.0 b=3.0: minor-axis ramp from r=2.5000 to 3.5000  width=1.0000 px (theory: 1)
+  a=4.0 b=2.0: major-axis ramp from r=3.0000 to 5.0000  width=2.0000 px (theory: a/b = 2.0000)
+  a=4.0 b=2.0: minor-axis ramp from r=1.5000 to 2.5000  width=1.0000 px (theory: 1)
+major-axis ramp width a/b on PUBLIC+HELD_OUT: min 1.001 median 1.434 p90 2.021 max 2.824
+  generator (200k draws): median 1.373, P(a/b > 1.5) = 0.386, P(a/b > 2) = 0.120, sup = 4.4/1.4 = 3.143
+half-intensity contour is exactly rho = 1 (the nominal ellipse): 0.500 at u=a, 0.500 at v=b
+pixels at the full value A per image: mean 15.7, ramp (0<v<A) pixels: mean 20.7; ramp share of non-zero pixels: 0.569
+images with zero plateau pixels: 0.0000; min plateau count 3
+signal energy in ramp pixels: 0.281
+
+========================================================================
+3. Parameter ranges, a >= b, theta range, degeneracies
+========================================================================
+  cx    range [5.0001, 11.0000]  declared [5.0000, 11.0000)
+  cy    range [5.0001, 11.0000]  declared [5.0000, 11.0000)
+  a     range [2.2000, 4.4000]  declared [2.2000, 4.4000)
+  theta range [0.0000, 3.1416]  declared [0.0000, 3.1416)
+  A     range [0.6000, 1.0000]  declared [0.6000, 1.0000)
+  b in [1.4000, 4.3935]; b < a always: True
+  marginal of b is not uniform: mean b 2.349 (uniform on [1.4,4.4] would give 2.9); P(b<2) 0.360
+  theta -> theta+pi gives identical image: max diff 8.88e-16
+  swapping (a,b) and theta+pi/2 is NOT the same image (rim uses b): max diff 0.188
+  near-circular a/b < 1.05: PUBLIC 0.109  generator 0.087  (theta weakly identified)
+  near-circular a/b < 1.1: PUBLIC 0.148  generator 0.166  (theta weakly identified)
+  near-circular a/b < 1.2: PUBLIC 0.281  generator 0.307  (theta weakly identified)
+  theta wrap-around: theta=0.01 and theta=pi-0.01 differ by 0.027 max pixel (tiny), yet their theta values differ by ~3.12
+
+========================================================================
+4. Border clipping: how often does the ellipse leave the 16x16 grid?
+========================================================================
+  PUBLIC  : 0.000 of images have non-zero ellipse pixels outside the grid; mass lost: mean 0.0000, max 0.000; images losing >5% of mass: 0.000
+     side counts (left x<0, right x>15, top y<0, bottom y>15): [0, 0, 0, 0]
+  HELD_OUT: 0.004 of images have non-zero ellipse pixels outside the grid; mass lost: mean 0.0000, max 0.003; images losing >5% of mass: 0.000
+     side counts (left x<0, right x>15, top y<0, bottom y>15): [0, 0, 0, 1]
+  gen 5000: 0.002 of images have non-zero ellipse pixels outside the grid; mass lost: mean 0.0000, max 0.012; images losing >5% of mass: 0.000
+     side counts (left x<0, right x>15, top y<0, bottom y>15): [0, 5, 0, 4]
+  centre range [5, 11] is centred on 8, not on the image centre 7.5: margin to left/top edge 5 px, to right/bottom edge 4 px
+
+========================================================================
+5. Noise and the clean-truth score
+========================================================================
+  PUBLIC  : noise std 0.09916, mean -0.00080; clean-truth MSE 0.009833  (sigma^2 = 0.010000, sampling s.e. 0.000078, z = -2.14)
+  HELD_OUT: noise std 0.09966, mean -0.00063; clean-truth MSE 0.009933  (sigma^2 = 0.010000, sampling s.e. 0.000055, z = -1.21)
+  pixel value range PUBLIC: [-0.403, 1.246]; fraction negative 0.438
+  PUBLIC/HELD_OUT/train_images use seeds 1/999/7: independent streams
+
+========================================================================
+6. Prompt claims vs generator
+========================================================================
+  'interior intensity A between about 0.6 and 1.0'  -> AMP_RANGE (0.6, 1.0)
+  'semi-axes roughly 1.4 to 4.4'  -> b in (1.4, a), a in (2.2, 4.4) (semi-major never below 2.2: not stated)
+  'rim fades over roughly one pixel' -> 1 px along minor axis, a/b px along major axis (median 1.43, max 2.82 on PUBLIC+HELD_OUT)
+  'background about 0.0', 'noise sd about 0.1' -> exact 0.0 and 0.1: OK
+  centre range [5,11]^2 and the frequent border clipping are not mentioned
+
+========================================================================
+7. Digit grids shown to the LLM (PUBLIC[0:3])
+========================================================================
+  image 0: cx=5.12 cy=6.18 a=3.33 b=1.95 theta=2.25 A=0.92 a/b=1.71; clipped-to-9 (v>=0.95): 5, clipped-to-0 (v<-0.05): 71, exact .x5 ties: 0; |grid/10 - v| max 0.261
+  image 1: cx=5.49 cy=7.86 a=4.29 b=2.31 theta=1.01 A=1.00 a/b=1.86; clipped-to-9 (v>=0.95): 20, clipped-to-0 (v<-0.05): 71, exact .x5 ties: 0; |grid/10 - v| max 0.291
+  image 2: cx=6.30 cy=7.32 a=2.52 b=1.75 theta=2.18 A=0.79 a/b=1.44; clipped-to-9 (v>=0.95): 2, clipped-to-0 (v<-0.05): 76, exact .x5 ties: 0; |grid/10 - v| max 0.272
+  across PUBLIC: images with any pixel shown as 9 though >= 0.95: 0.633; 9 means 'v >= 0.85' (anything brighter is hidden)
+  round(2.5) = 2, round(3.5) = 4 (banker's rounding; ties are measure-zero for noisy floats)
+  PUBLIC[0:3] params vs PUBLIC distribution: a pct [51, 96, 11], A pct [71, 100, 46]
+
+--- prompt as the LLM sees it (images part) ---
+ (0-9; the evaluator uses the raw floats):
+
+  0000000001020011
+  0000000001010001
+  0200012000100000
+  1000121200000000
+  0100268820000110
+  0000699931100001
+  1105999840011101
+  0216889400010000
+  0228895000200010
+  0104610001020001
+  0001001002010000
+  0000001010001111
+  1000001102010010
+  1000000100111020
+  0010110002110000
+  0000010100200101
+
+  0000000030000001
+  1100200110000000
+  0110100000100101
+  0100121100100001
+  0024420010200100
+  0007996000102010
+  0039999400100100
+  0109999930101000
+  0016999980000020
+  1000899992011002
+  0011399990100020
+  0000049950010000
+  0100000330001200
+  0101100002200001
+  1020010000000010
+  1100212210000001
+
+  0100002001102001
+  0011100021101111
+  0010002000111102
+  1000000000100101
+  0000011020000101
+  0100011520101210
+  0100049560110000
+  1000089941000000
+  0020389650003001
+  0000168500010112
+  0100002000000001
+  1000110001002110
+  1000000110020000
+  0000010000110000
+  1000000101231000
+  2110110110120000
+

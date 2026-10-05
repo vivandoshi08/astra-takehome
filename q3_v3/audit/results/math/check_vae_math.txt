@@ -1,0 +1,61 @@
+
+========================================================================
+1. Finite-difference check of every parameter (beta large so KL matters)
+========================================================================
+  2 hidden layers, beta=3: loss returned by _step 1.211508546084 == mirror loss 1.211508546084: True
+    eW0  shape (12, 7)   max rel err 3.34e-09  (|g| max 6.19e-02)
+    eW1  shape (7, 5)    max rel err 2.66e-09  (|g| max 9.68e-02)
+    eW2  shape (5, 6)    max rel err 5.31e-09  (|g| max 5.52e-02)
+    eb0  shape (7,)      max rel err 3.35e-09  (|g| max 3.12e-02)
+    eb1  shape (5,)      max rel err 6.11e-09  (|g| max 2.52e-02)
+    eb2  shape (6,)      max rel err 1.91e-09  (|g| max 5.41e-02)
+    dW0  shape (3, 5)    max rel err 1.24e-09  (|g| max 1.42e-01)
+    dW1  shape (5, 7)    max rel err 1.89e-09  (|g| max 1.12e-01)
+    dW2  shape (7, 12)   max rel err 1.64e-09  (|g| max 1.11e-01)
+    db0  shape (5,)      max rel err 3.32e-09  (|g| max 4.08e-02)
+    db1  shape (7,)      max rel err 2.17e-09  (|g| max 7.36e-02)
+    db2  shape (12,)     max rel err 1.69e-09  (|g| max 9.98e-02)
+  WORST relative error: 6.11e-09
+  no hidden layer (linear), beta=0.5: loss returned by _step 3.401924065335 == mirror loss 3.401924065335: True
+    eW0  shape (12, 6)   max rel err 2.50e-10  (|g| max 2.99e+00)
+    eb0  shape (6,)      max rel err 5.51e-10  (|g| max 1.39e+00)
+    dW0  shape (3, 12)   max rel err 2.96e-10  (|g| max 1.75e+00)
+    db0  shape (12,)     max rel err 2.90e-09  (|g| max 1.50e-01)
+  WORST relative error: 2.90e-09
+
+========================================================================
+2. logvar clip at +-10: does backward respect it?
+========================================================================
+  pre-clip logvar dim0 range [24.4, 25.3], dim1 [-25.3, -25.0]
+  d loss / d (logvar bias 0): finite diff +0.000000e+00   vae.py analytic +2.753188e+03
+  d loss / d (logvar bias 1): finite diff +0.000000e+00   vae.py analytic -1.249552e-01
+  d loss / d (logvar bias 2): finite diff -6.999471e-03   vae.py analytic -6.999148e-03
+
+========================================================================
+3. Adam: compare 6 steps against an independent reference implementation
+========================================================================
+  step 1: max |vae.py params - reference| = 2.78e-17
+  step 2: max |vae.py params - reference| = 1.11e-16
+  step 3: max |vae.py params - reference| = 1.11e-16
+  step 4: max |vae.py params - reference| = 1.11e-16
+  step 5: max |vae.py params - reference| = 1.11e-16
+  step 6: max |vae.py params - reference| = 1.11e-16
+
+========================================================================
+4. In-place updates alias the weight lists
+========================================================================
+  _params[i] is eW/eb/dW/db[i]: True; weights actually changed: True
+
+========================================================================
+5. encode returns mu; reconstruct is deterministic
+========================================================================
+  encode(X) == mu: True; shape (9, 3); reconstruct twice identical: True; 1-D input handled: (1, 3)
+  KL(N(0.7,0.3^2)||N(0,1)): closed form used by vae.py 0.99397280, numerical integral 0.99397280
+
+========================================================================
+6. save / load round trip, and resuming training after load
+========================================================================
+  params equal after load: True; encode equal: True; config (ambient, hidden, latent, beta, seed) equal: True
+  after load _params alias the weight lists: True; arrays writeable: True; dtype float64
+  Adam state after load: t=0 (trained model t=30); m all zero: True; _rng reset to the seed stream
+  10 more epochs: uninterrupted vs save/load/resume differ by max 1.481e-02 (optimizer state and RNG are not saved)

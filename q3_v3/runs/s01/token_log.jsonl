@@ -1,0 +1,7 @@
+{"call": 1, "tag": "openrouter:anthropic/claude-sonnet-5|gen0", "input_tokens": 1375, "output_tokens": 2048, "cumulative": 3423, "wall_ts": 1791181437.153245}
+{"call": 2, "tag": "openrouter:anthropic/claude-sonnet-5|gen0", "input_tokens": 1375, "output_tokens": 2048, "cumulative": 6846, "wall_ts": 1791181457.0980961}
+{"call": 3, "tag": "openrouter:anthropic/claude-sonnet-5|gen0", "input_tokens": 1375, "output_tokens": 2048, "cumulative": 10269, "wall_ts": 1791181475.693124}
+{"call": 4, "tag": "openrouter:anthropic/claude-sonnet-5|gen0", "input_tokens": 1375, "output_tokens": 2048, "cumulative": 13692, "wall_ts": 1791181500.554771}
+{"call": 5, "tag": "openrouter:anthropic/claude-sonnet-5|gen1", "input_tokens": 1375, "output_tokens": 2048, "cumulative": 17115, "wall_ts": 1791181522.550655}
+{"call": 6, "tag": "openrouter:anthropic/claude-sonnet-5|gen1", "input_tokens": 1375, "output_tokens": 2048, "cumulative": 20538, "wall_ts": 1791181542.111315}
+{"call": 7, "tag": "openrouter:anthropic/claude-sonnet-5|gen1", "input_tokens": 1375, "output_tokens": 2048, "cumulative": 23961, "wall_ts": 1791181562.2212}

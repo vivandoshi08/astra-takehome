@@ -1,0 +1,31 @@
+== 1. variance of a uniformly filled ellipse ==
+  a=4.0 b=1.5: var_u=3.99742 (a^2/4=4.00000)  var_v=0.56246 (b^2/4=0.56250)
+  a=3.0 b=3.0: var_u=2.25129 (a^2/4=2.25000)  var_v=2.24953 (b^2/4=2.25000)
+  a=2.2 b=1.4: var_u=1.21032 (a^2/4=1.21000)  var_v=0.48940 (b^2/4=0.49000)
+
+== 2. first guess on clean renders (no noise), fresh seed 77, n=2000 ==
+  centre error: median |dcx| 0.0298 |dcy| 0.0288
+  a_hat/a median 0.9911 [5%,95%] [0.9415 1.0299]; b_hat/b median 0.9857 [5%,95%] [0.9225 1.0346]
+  theta error mod pi (a/b>1.2, n=1392): median 1.376 deg, max 31.298 deg
+  same with theta negated (wrong convention would match this): median 43.83 deg
+  A_hat/A median 1.0112
+
+== 3. brightness least squares ==
+  closed form A=0.520876, grid argmin A=0.520876; render linear in A: max|r(0.7)-0.7 r(1)|=0.0e+00
+
+== 4. theta periodicity and remainder ==
+  max |render(theta+k pi) - render(theta)| over 500 params, k in (1,-1,2,7,-13): 1.14e-14
+  remainder range [-1.57079632679489656, 1.57079632679489656] vs pi/2=1.57079632679489656; remainder(-pi/2)=-1.5707963267948966
+
+== 5. decode(encode(x)) vs the fit's own render (MIN_AXIS clamp, remainder) ==
+  max |decode(encode(x)) - render(best_p)| = 9.16e-15; max |SSE(decode) - fit cost| = 8.88e-16
+  fits with a negative axis: 0/256, an axis below MIN_AXIS: 0/256, |b|>|a| (swapped): 42/256
+
+== 6. is (a,b,th) == (b,a,th+pi/2) in render? ==
+  max |render(p)-render(q)| = 0.247  (rim ramp scales with b)
+
+== 7. FD Jacobian (H=1e-5, forward) vs central difference H=1e-7 / complex-free check ==
+  relative max |J_fwd - J_central|: median 7.3e-06, max 2.5e-05 (spikes come from pixels at the clip kink)
+
+== 8. linear-model check of E[RSS]/n = sigma^2 (1 - p/n) ==
+  simulated 0.0097669 vs sigma^2(1-6/256) = 0.0097656

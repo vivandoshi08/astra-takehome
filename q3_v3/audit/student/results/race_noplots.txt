@@ -1,0 +1,12 @@
+scoring on data.PUBLIC (128 images; higher is better, 0.0 is perfect)
+
+  student (yours)          -0.0096
+  mean                     -0.0454
+  pca (k=6)                -0.0173
+  vae (k=6)                -0.0051
+scoring on data.HELD_OUT (256 images; higher is better, 0.0 is perfect)
+
+  student (yours)          -0.0097
+  mean                     -0.0444
+  pca (k=6)                -0.0195
+  vae (k=6)                -0.0346

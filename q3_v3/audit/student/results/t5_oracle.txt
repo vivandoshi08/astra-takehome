@@ -1,0 +1,42 @@
+seed 7: per-set theory -0.009761
+  student -0.009738 | oracle-start 40 it -0.009752 | oracle-start 1000 it -0.009752 | student polished 1000 it -0.009738 | strong multistart -0.009734
+  student - oracle40 per image: mean -1.33e-05; worse >1e-4: 1, better >1e-4: 12
+  student - strong per image:   mean +4.32e-06; worse >1e-4: 2, worse >1e-5: 16, max 3.27e-04
+  images where student beats oracle40 by >1e-4: 12; of these student-fit swapped (|b|>|a|): 12, oracle40 swapped: 0; oracle 1000 it closes the gap on 0
+  swapped (|b|>|a|) student fits overall: 53/256; oracle40 fits: 2/256
+  strong - per-set theory +2.66e-05; oracle40 - theory +9.06e-06
+seed 2024: per-set theory -0.009632
+  student -0.009619 | oracle-start 40 it -0.009631 | oracle-start 1000 it -0.009631 | student polished 1000 it -0.009619 | strong multistart -0.009614
+  student - oracle40 per image: mean -1.15e-05; worse >1e-4: 0, better >1e-4: 7
+  student - strong per image:   mean +5.58e-06; worse >1e-4: 5, worse >1e-5: 21, max 2.17e-04
+  images where student beats oracle40 by >1e-4: 7; of these student-fit swapped (|b|>|a|): 7, oracle40 swapped: 0; oracle 1000 it closes the gap on 0
+  swapped (|b|>|a|) student fits overall: 49/256; oracle40 fits: 4/256
+  strong - per-set theory +1.80e-05; oracle40 - theory +9.20e-07
+seed 3: per-set theory -0.009729
+  student -0.009709 | oracle-start 40 it -0.009717 | oracle-start 1000 it -0.009717 | student polished 1000 it -0.009709 | strong multistart -0.009704
+  student - oracle40 per image: mean -7.96e-06; worse >1e-4: 0, better >1e-4: 6
+  student - strong per image:   mean +4.87e-06; worse >1e-4: 3, worse >1e-5: 22, max 2.59e-04
+  images where student beats oracle40 by >1e-4: 6; of these student-fit swapped (|b|>|a|): 6, oracle40 swapped: 0; oracle 1000 it closes the gap on 0
+  swapped (|b|>|a|) student fits overall: 37/256; oracle40 fits: 4/256
+  strong - per-set theory +2.46e-05; oracle40 - theory +1.17e-05
+seed 11: per-set theory -0.009765
+  student -0.009742 | oracle-start 40 it -0.009753 | oracle-start 1000 it -0.009753 | student polished 1000 it -0.009742 | strong multistart -0.009736
+  student - oracle40 per image: mean -1.07e-05; worse >1e-4: 0, better >1e-4: 5
+  student - strong per image:   mean +5.75e-06; worse >1e-4: 5, worse >1e-5: 25, max 2.82e-04
+  images where student beats oracle40 by >1e-4: 5; of these student-fit swapped (|b|>|a|): 5, oracle40 swapped: 0; oracle 1000 it closes the gap on 0
+  swapped (|b|>|a|) student fits overall: 48/256; oracle40 fits: 3/256
+  strong - per-set theory +2.89e-05; oracle40 - theory +1.24e-05
+seed 42: per-set theory -0.009817
+  student -0.009789 | oracle-start 40 it -0.009800 | oracle-start 1000 it -0.009800 | student polished 1000 it -0.009789 | strong multistart -0.009781
+  student - oracle40 per image: mean -1.06e-05; worse >1e-4: 0, better >1e-4: 8
+  student - strong per image:   mean +7.79e-06; worse >1e-4: 6, worse >1e-5: 28, max 3.82e-04
+  images where student beats oracle40 by >1e-4: 8; of these student-fit swapped (|b|>|a|): 7, oracle40 swapped: 0; oracle 1000 it closes the gap on 0
+  swapped (|b|>|a|) student fits overall: 39/256; oracle40 fits: 6/256
+  strong - per-set theory +3.55e-05; oracle40 - theory +1.72e-05
+seed 100: per-set theory -0.009734
+  student -0.009706 | oracle-start 40 it -0.009717 | oracle-start 1000 it -0.009717 | student polished 1000 it -0.009706 | strong multistart -0.009699
+  student - oracle40 per image: mean -1.15e-05; worse >1e-4: 0, better >1e-4: 11
+  student - strong per image:   mean +6.76e-06; worse >1e-4: 3, worse >1e-5: 28, max 3.19e-04
+  images where student beats oracle40 by >1e-4: 11; of these student-fit swapped (|b|>|a|): 11, oracle40 swapped: 0; oracle 1000 it closes the gap on 0
+  swapped (|b|>|a|) student fits overall: 51/256; oracle40 fits: 5/256
+  strong - per-set theory +3.48e-05; oracle40 - theory +1.66e-05

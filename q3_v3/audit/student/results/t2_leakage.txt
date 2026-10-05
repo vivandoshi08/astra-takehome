@@ -1,0 +1,16 @@
+/Users/vivandoshi/Documents/astra-takehome 3/q3_v3/data.py:61: RuntimeWarning: overflow encountered in square
+  rho = np.sqrt((u / a) ** 2 + (v / b) ** 2)
+baseline encode hash 52f71f31d556b71d  decode hash 87aeacf188e94cfc
+data.* attributes read by encode+decode: ['IMG', 'render'] | bit-identical: True
+after garbage-overwriting PUBLIC/HELD_OUT/*_PARAMS/*_CLEAN and disabling data.sample/train_images: bit-identical encode True  decode True
+shuffled order bit-identical: True | reversed: True | repeat: True
+interleaved with junk calls bit-identical: True
+student module globals unchanged by calls: True | function defaults: None None | closures: None None
+inputs not mutated: list True  ndarray True  z True
+decode(z_other) == render(z): max abs diff 0.0
+wrote out/run_a.npz encode hash 52f71f31d556b71d decode hash 87aeacf188e94cfc
+wrote out/run_b.npz encode hash 52f71f31d556b71d decode hash 87aeacf188e94cfc
+wrote out/run_c.npz encode hash 52f71f31d556b71d decode hash 87aeacf188e94cfc
+cross-process bit-identical encode a==b True a==c True  decode a==b True a==c True
+fresh-process decode bit-identical to warm-process decode: True
+fresh-process encode of 1 image (HELD_OUT[31]) bit-identical: True

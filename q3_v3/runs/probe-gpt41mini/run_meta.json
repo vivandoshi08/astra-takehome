@@ -1,0 +1,9 @@
+{
+  "client": "openrouter:openai/gpt-4.1-mini",
+  "model": "openai/gpt-4.1-mini",
+  "max_tokens": 2048,
+  "seed_score": -0.027190203015196764,
+  "provider_usage_before": 4.533325,
+  "provider_usage_after": 4.739903,
+  "budget": "2 calls, 2,352 in + 1,552 out = 3,904 tokens (8% of cap)"
+}

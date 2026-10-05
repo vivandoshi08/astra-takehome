@@ -1,0 +1,10 @@
+scoring on data.HELD_OUT (256 images; higher is better, 0.0 is perfect)
+
+  student (yours)          -0.0097
+  mean                     -0.0444
+  pca (k=6)                -0.0195
+  vae (k=6)                -0.0346
+  champion (a02)           -0.0146
+  champion (b07)           -0.0097
+  champion (r01)           -0.0118
+  champion (l03)           -0.0097

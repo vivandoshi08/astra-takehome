@@ -1,0 +1,50 @@
+=== A. base-commit Q3 files + one UNTRACKED run dir
+  | ASTRA take-home — packaging submission
+  | 
+  |       git history: 1 commits bundled
+  | WARN  you have untracked files — the file copies below include them, but the git history does not
+  |       documents:   4 (.md/.pdf/.html/.ipynb/.docx/.txt)
+  |       logs:        2 (.jsonl/.csv)
+  |       plots/media: 0
+  |       pickles:     0
+  | WARN  q3_v3: student.py still contains the placeholder — your own model is a deliverable
+  | 
+  | Wrote astra_submission_20261004_220601.tar.gz (308K)
+  | There were warnings above. The tarball was still written — review them
+  | before you send it.
+  tarball entries under q3_v3/:
+    astra_submission_20261004_220601/q3_v3/README.md
+    astra_submission_20261004_220601/q3_v3/finding.md
+    astra_submission_20261004_220601/q3_v3/runs/r1/token_log.jsonl
+    astra_submission_20261004_220601/q3_v3/runs/r1/run_log.jsonl
+  best.py in tarball file copies: 0
+  student.py in tarball file copies: 0
+
+=== B. same, after committing the run dir
+  | WARN  q3_v3: student.py still contains the placeholder — your own model is a deliverable
+  best.py in tarball file copies: 0
+  best.py in repo.bundle (committed tree): 1
+
+=== C. does a Q3 report check ever fire? (finding.md template ships)
+    q3_v3/README.md
+    q3_v3/finding.md
+
+=== D. student.py with everything BETWEEN the markers replaced (markers kept, as instructed)
+    
+    from __future__ import annotations
+    
+    # ---------------------------------------------------------------------------
+    # TODO: replace everything between these markers with your model.
+    # ---------------------------------------------------------------------------
+    
+    def encode(img):
+        return [8.0]*6   # my own model
+    
+    def decode(z):
+        return [0.0]*256
+    
+    # ---------------------------------------------------------------------------
+    # end of your model
+    # ---------------------------------------------------------------------------
+    
+  -> package_submission.sh would WARN 'student.py still contains the placeholder' (false alarm)

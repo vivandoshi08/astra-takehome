@@ -1,0 +1,31 @@
+=== A. default (Haiku rates): 2000 in + 1000 out per call; mock 12 calls, others 48
+run               calls         in       out       $
+a_mock               12     24,000    12,000    0.08
+b_haiku              48     96,000    48,000    0.34
+c_sonnet             48     96,000    48,000    0.34
+                                       total    0.76
+
+$0.76 of $10.00 spent, $9.24 left (priced at anthropic/claude-haiku-4.5 rates; mock runs are free and log nothing).
+
+  true cost: mock $0, haiku 96K*1+48K*5 = $0.336, sonnet 96K*2+48K*10 = $0.672 -> $1.01 total
+
+=== B. --model anthropic/claude-sonnet-5 (prices ALL runs at Sonnet)
+run               calls         in       out       $
+a_mock               12     24,000    12,000    0.17
+b_haiku              48     96,000    48,000    0.67
+c_sonnet             48     96,000    48,000    0.67
+                                       total    1.51
+
+$1.51 of $10.00 spent, $8.49 left (priced at anthropic/claude-sonnet-5 rates; mock runs are free and log nothing).
+
+=== C. --in-rate given without --out-rate
+$0.76 of $10.00 spent, $9.24 left (priced at anthropic/claude-haiku-4.5 rates; mock runs are free and log nothing).
+
+=== D. a token_log whose last line was cut mid-write
+  exit 1: json.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 31 (char 30)
+
+=== E. run from the repo root as `python q3_v3/spend.py` (default --runs is CWD-relative)
+  exit 1: no token logs under runs/ — nothing to price
+
+=== F. does spend.py read the tag at all?
+  'tag' appears in spend.py source: False
