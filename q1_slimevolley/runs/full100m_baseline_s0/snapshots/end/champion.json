@@ -1,0 +1,10 @@
+{
+  "key": 21946,
+  "generation": 395,
+  "train_fitness": -4.85136,
+  "val_mean": -4.55,
+  "nodes": 15,
+  "conns": 16,
+  "snapshot_steps": 99183224,
+  "snapshot_gen": 419
+}
