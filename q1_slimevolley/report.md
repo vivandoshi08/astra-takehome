@@ -1,7 +1,10 @@
 # Q1 — Slime volleyball with NEAT
 
-**Result (3 seeds, 100 held-out episodes each):** every seed reaches **T3 or better** and
-the mean across seeds is **+0.10**.
+**Result (3 seeds, 100 held-out episodes each):** every seed reaches **T3 or better**.
+The mean across seeds is +0.10, but with 3 seeds its 95% CI is [−0.52, +0.72] (t, df = 2);
+pooling all 300 episodes gives [−0.01, +0.21]. So this is *not* evidence that the
+method beats the opponent on average. It is evidence that each champion reaches T3, and
+that one champion beats it.
 
 | seed | held-out mean [95% CI] | W / D / L |
 |---|---|---|
@@ -12,10 +15,11 @@ the mean across seeds is **+0.10**.
 **Bonus tier (> 0) reached.** I committed a headline rule before these runs: pick the
 best *validation* score. Seeds 1 and 2 tie on it at +0.55. I don't break the tie with
 held-out data, and the claim doesn't need me to: both tied champions are above 0
-held-out.
+held-out. Only seed 1 is significantly above 0 (p = 0.001); seed 2 is above 0 in mean
+only (p = 0.20). Seed 1 beats seed 0 (paired p = 0.001) but not seed 2 (p = 0.11).
 
-Getting here took one change to how outputs become actions (*How the replication was
-fixed*). With the original mapping, the identical command escaped the net-camper trap
+Getting here took a change to how outputs become actions, plus `response` 1.0 (*How
+the replication was fixed*). With the original mapping, the identical command escaped the net-camper trap
 on **1 of 3** seeds (−0.37 / −4.77 / −4.79).
 
 Every number here is re-derivable from `runs/<id>/` (schema in [LOGS.md](LOGS.md));
@@ -45,7 +49,9 @@ the lab notebook.
 - **Curriculum** (`--phase1-steps 40M`) — selection fitness per game is
   `returns + 0.3·steps/3000` until 40M steps, with no score term. After that it is
   `score + 0.3·steps/3000 + 0.07·min(returns, 9)`. Shaping is capped below one point
-  (B + R·cap = 0.93 < 1).
+  *per game* (B + R·cap = 0.93 < 1). Fitness is a 5-game mean, so there one extra point
+  is worth only 0.2. Shaping reorders about 2% of phase-2 genome pairs against their raw
+  means; it barely matters because the champion is chosen on raw validation score.
 - **Configs** — `configs/direction_r1.ini` differs from the original shipped
   `neat_config.ini` (first commit) only in:
   - 2 derived inputs (`ball x − my x`, `ball y − my y`)
@@ -85,8 +91,8 @@ whether run with 3 or 9 workers.
 
 ![old vs new mapping](experiments/mapping_comparison.png)
 
-Champion validation score against steps, same seeds, same fitness; only the action
-mapping differs.
+Champion validation score against steps, same seeds, same fitness formula; only the
+action mapping and `response` (0.2 → 1.0) differ.
 - **Direction mapping:** every seed escapes −4.7 between 7M and 12M steps. Seeds 0 and
   2 reach 0 by 20M, *before score is part of fitness*. All three end at +0.45 to +0.55.
 - **Old mapping:** seed 0 escapes later (~17M); seeds 1 and 2 stay net campers for the
@@ -94,17 +100,25 @@ mapping differs.
 
 Per-run curves with population best and mean, train and raw:
 `runs/full100m_direction_s*/analysis/fitness_curve.png`.
-- The population **mean** raw score stays near −4.5 even late on. Mutation mostly breaks
-  good genomes, so it is not a progress measure.
+- The population **mean** raw score lags far behind the best. After 80M steps it
+  averages −3.08 / −3.10 / −2.58 while the champions sit near 0, because mutation
+  breaks many offspring of good genomes. (In the old, stuck runs it stayed near −4.5.)
 - Two confounds are measured each run:
-  - 72–83% of generation-to-generation jitter in training-best comes from seed
-    difficulty.
-  - Training overstates validation by +0.16 to +0.24 (winner's curse).
+  - **Seed difficulty.** Within a phase, it explains r² = 0.17 / 0.01 / 0.26 (phase 1)
+    and 0.34 / 0.06 / 0.17 (phase 2) of generation-to-generation movement in
+    training-best. That is an association, measured on elites re-scored on new seeds.
+    The generation where the phase switches is excluded; an earlier version of the
+    analyzer included it, and that single point inflated the figure to "72–83%" (*What
+    went wrong* #11).
+  - **Winner's curse.** For validated genomes in phase 2, where every champion came
+    from, training raw score overstates validation by +0.30 / +0.29 / +0.38 (95% CIs
+    within ±0.07). In phase 1, where selection isn't on score, the gap is only
+    +0.04 to +0.13.
   - Both are why only held-out numbers are reported.
 
 ## Champion evaluation
 
-| | seed 0 | seed 1 | seed 2 | old mapping (s0/s1/s2) | no curriculum |
+| | seed 0 | seed 1 | seed 2 | old mapping (s0/s1/s2) | old mapping, no curriculum |
 |---|---|---|---|---|---|
 | held-out mean | −0.160 | **+0.340** | +0.120 | −0.37 / −4.77 / −4.79 | −4.78 |
 | 95% CI (t) | [−0.365, +0.045] | [+0.140, +0.540] | [−0.063, +0.303] | | [−4.87, −4.69] |
@@ -136,8 +150,11 @@ All are feed-forward, sum aggregation, response 1.0. Tables:
 ## Behavioral analysis
 
 Seed 1's replays at 10M → 60M → final (`runs/full100m_direction_s1/snapshots/replays/`)
-show the progression net camper → chasing → rallying. Behaviour on 20 held-out games
-(`behavior.py`):
+show the progression net camper → chasing → rallying. Where the table rows come from:
+- possession and longest hold: `behavior.py`, 20 held-out games
+- contacts, returns, distance, zones and jumping: `evaluate.py`, all 100 held-out games
+- built-in policy column: its own network playing our seat (`behavior.py` /
+  `reward_check.py`)
 
 | | seed 0 | seed 1 | seed 2 | built-in policy (our seat) |
 |---|---|---|---|---|
@@ -163,19 +180,22 @@ show the progression net camper → chasing → rallying. Behaviour on 20 held-o
   - Timeouts are not a stalling signal: the built-in policy playing against itself
     reaches the 3000-step limit in 20 of 20 games.
 - **Constant jumping** (seed 0, and the old T3 champion) is not required for good play.
-  Seed 1, the strongest, jumps on 44% of steps.
+  Seed 1, the best scorer, jumps on 44% of steps.
 - **Earlier finding** (old T3 champion): 42% of its lost points came in the first 300
   steps of a game, so openings were its weak spot.
 - **What shaping did:**
   - Survival-only shaping separated a ball-tracker from a net camper by 0.06, inside
     the noise.
   - The phase-1 objective separates them by 2.4.
-  - **But phase 1 is only a stepping stone.** `reward_check` with the final champions
-    shows it ranking seed 0's champion (most returns, 25.8) above seed 2's and the
-    built-in policy, which win more points. So "more returns" stops tracking "more
-    points" once agents can rally.
-  - The score-based phase-2 formula passes that check, and all three champions were
-    selected in phase 2 (generations 99 / 141 / 128; the switch was at ~82).
+  - **But returns stop distinguishing champions at the top.** On held-out games,
+    seed 2 scores higher than seed 0 (+0.28, paired p = 0.03) with 38% fewer returns
+    (15.8 vs 25.5). So "more returns" no longer means "more points" once agents can
+    rally, which is why selection hands over to score.
+  - `reward_check`'s ordering test still passes the phase-1 formula at 20, 50 and 100
+    probe games. A 10-game run had flagged it, but at that size the raw-score gaps
+    were within noise; I over-read it at first (*What went wrong* #10).
+  - All three champions were selected in phase 2 (generations 99 / 141 / 128; the
+    switch was at ~82).
 
 ## What went wrong, and how I found it
 
@@ -184,9 +204,9 @@ show the progression net camper → chasing → rallying. Behaviour on 20 held-o
    agent found 30 of 30 replays diverged at step 0. Fixed in `play_episode`; a replay
    now matches a fresh env exactly.
 2. **The champion was the luckiest score, and the curve partly measured the seeds.**
-   The shipped driver keeps the highest training fitness ever seen. Training overstates
-   validation by +0.15 to +0.24, and validation overstates held-out too: the baseline's
-   −4.55 became −4.78. Fix: a validation-picked champion, a validation track on the
+   The shipped driver keeps the highest training fitness ever seen. Training raw score
+   overstates validation by about +0.3 in the phase where champions are chosen (*Fitness
+   curve*), and validation overstates held-out too: the baseline's −4.55 became −4.78. Fix: a validation-picked champion, a validation track on the
    curve, and only held-out numbers reported.
 3. **Five runs learned nothing, and at first the logs could only say *that*.**
    - 89% of games were 5–0 losses, and 85–100% of genomes per generation had the same
@@ -218,12 +238,30 @@ show the progression net camper → chasing → rallying. Behaviour on 20 held-o
    stderr to `/dev/null`. Reproduced with stderr kept: neat's `RuntimeError` (33
    species × 2 > population 64). Crashes are now recorded and outputs still written.
    The rerun was byte-identical with 3 vs 9 workers.
-9. **The method worked on 1 of 3 seeds, and five plausible fixes didn't help.** The
-   cause was the action mapping, found by ablation. Full story below.
-10. **The stepping-stone objective is misaligned at the top end.** Found by re-running
-    `reward_check` with the final champions (see *Behavior*). It's harmless here
-    because selection hands over to score at 40M, but a longer phase 1 would optimise
-    the wrong thing.
+9. **The method worked on 1 of 3 seeds, and five plausible fixes showed no large
+   effect.** The cause was the action mapping, found by ablation. Full story below.
+10. **I over-read a 10-game check.** Re-running `reward_check` with the final champions
+    over 10 probe games, the phase-1 formula failed the ordering test, and I wrote it
+    up as "phase 1 is misaligned at the top end", citing seed 0 as having "the most
+    returns". The independent math audit (below) found that seed 1 has the most
+    returns, and that the test *passes* at 20, 50 and 100 games: the 10-game raw gaps
+    were noise. What survives is the held-out observation in *Behavior*.
+11. **A statistic was dominated by one point.** The analyzer's seed-difficulty figure
+    ("72–83% of jitter") included the generation where the curriculum switches from
+    returns to score. That one pair, where the fitness formula itself changes, drove the
+    whole number. The analyzer now excludes phase-crossing pairs and reports r² per phase
+    (0.01–0.34).
+12. **Final math audit.** Before merging, a separate auditor agent recomputed every
+    statistical and RL claim:
+    - exact t and independent bootstrap CIs, all of which reproduce
+    - pre-registration timing: the script was committed 2 s before the runs started
+    - the validation tie, seed separation, budget sums, and the action-mapping code path
+    - the shaping bound, which holds per game only, and a bootstrap index off by one
+      (no effect at 3 decimals)
+
+    #10 and #11, the headline's missing between-seed CI, and a stale population-mean
+    figure came from that audit. All are fixed, and I re-verified its numbers with
+    scipy.
 
 ## How the replication was fixed
 
@@ -259,7 +297,7 @@ H1's failure was the clue. It grew tracking weights as large as seed 0's champio
   agent stands still.
 - Gating forward without tracking is *worse* than camping.
 - So escaping needed two simultaneous changes, neither rewarded alone: a deceptive
-  valley. None of H1–H5 changes that.
+  valley. None of H1–H5 addresses that.
 
 **4. The fix lives in the mapping, which the task leaves to us.**
 `mapping_check.py` scores hand-built "camper + tracking strength k" policies:
@@ -268,7 +306,7 @@ H1's failure was the clue. It grew tracking weights as large as seed 0's champio
 |---|---|
 | threshold (original) | flat at 0.76 for every k up to 16 (valley) |
 | signed (difference of the 2 outputs) | also flat: saturated outputs never clear its dead zone |
-| **direction** | rises with k: 0.97 → 3.84 → 9.01 (7 → 29 → 45 contacts) |
+| **direction** | flat (0.76) up to k = 2, then rises: 0.97 → 3.84 → 9.01 at k = 4 / 8 / 16 (7 → 29 → 45 contacts) |
 
 With one movement output, the tracking weight acts directly against "forward on".
 
@@ -280,7 +318,11 @@ With one movement output, the tracking weight acts directly against "forward on"
 | direction + response 1.0 | **3/3** |
 | direction + wide weights | 0/3 |
 
-Response 1.0 matters: at 0.2 the tracking weight must reach ~20 instead of ~4.
+Is response 1.0 needed? 3/3 vs 1/3 alone is not significant (Fisher p = 0.40). The
+case for it is mechanistic: under 0.2, the k ≈ 4 that `mapping_check` needs means a
+network weight of ~20 instead of ~4, a long mutation walk. Across everything run,
+direction + response 1.0 escaped 6 of 6 times, while the old mapping on the same
+protocols escaped 1 of 6 (Fisher p = 0.015).
 
 **6. Full replication** on the original seeds 0–2, pre-registered in
 `experiments/full_direction.sh`: 3 of 3 reach T3 or better (table at top). The fitness
@@ -318,7 +360,8 @@ Checked against README "Ground rules" and the Q1 section of QUESTIONS.md:
     in replays and progress tables. No champion, config or mapping was chosen on them.
     Choices used training logs, validation seeds or probe seeds (3e6+). The one time a
     held-out comparison favoured a different champion (60M snapshot, old run), I didn't
-    switch.
+    switch. On the 80 held-out seeds never viewed, the champions score −0.16 / +0.41
+    [+0.18, +0.64] / +0.13, the same conclusions.
   - **Throwaway runs.** Short plumbing and smoke-test runs (≤ 3M steps) were deleted
     without ever being committed.
   - **The crashed run's original logs are kept.** It was reproduced for its traceback,
@@ -329,9 +372,10 @@ Checked against README "Ground rules" and the Q1 section of QUESTIONS.md:
 ## Anything surprising
 
 - **The failure was in the action interface, not the reward or the search
-  settings.** Five search-side fixes did nothing; one interface change made the
-  breakthrough reliable.
-- **A stepping-stone objective can go wrong once it succeeds.** Phase 1 was essential to
-  escape the trap, and is misaligned at the top end.
-- **Time:** about 3 h of session time (16:08 → 19:10 by commit timestamps). Q2/Q3 were not attempted by me. `git log` shows
+  settings.** Five search-side changes showed no large effect. The interface change
+  (mapping plus response) took escapes from 1/6 to 6/6.
+- **A stepping-stone objective stops being informative once it succeeds.** Phase 1 was
+  essential to escape the trap. But among champions that already rally, more returns no
+  longer means more points.
+- **Time:** about 3.5 h of session time (16:08 → 19:35 by commit timestamps). Q2/Q3 were not attempted by me. `git log` shows
   the order things were found.

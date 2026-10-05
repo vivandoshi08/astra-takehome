@@ -18,7 +18,7 @@ score + B * steps/3000. Against this opponent ~90% of early games are 5-0
 losses and the few points won are mostly decided by the serve, so raw score
 gives selection almost nothing to work with; time survived does vary and
 correlates with score. With B < 1 a point always outweighs any amount of
-survival. The champion is still chosen on raw validation score, and every
+survival *within one game*. The champion is still chosen on raw validation score, and every
 reported number is raw score.
 
 --return-bonus R adds R per *return* (our contact after which the ball reaches
@@ -26,7 +26,11 @@ the opponent's half), counting at most --return-cap returns per episode, to
 each episode's selection fitness. The cap matters: winning points ends the
 game sooner, so an uncapped bonus would pay a 0-0 rally to the time limit
 more than a quick 5-0 win. B + R*cap must be < 1 so one point always
-outweighs all shaping combined. Survival alone was
+outweighs all shaping combined *within one game*. Fitness is a mean over
+--episodes games, so one extra point is worth 1/episodes there and shaping
+can still reorder genomes whose raw means differ slightly (~2% of phase-2
+pairs in the full runs); the champion is chosen on raw score regardless.
+Survival alone was
 too weak (~0.7% of fitness variance) and raw contacts don't track score
 (r = 0.05; a genome can juggle on its own side and still lose 5-0), whereas
 returning the ball is the thing that has to happen before any point is won.

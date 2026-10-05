@@ -858,12 +858,28 @@ def check_seeds(run: Run, rep: Report):
 # 4. seed difficulty confound
 # --------------------------------------------------------------------------
 
+def gen_phase(run: Run) -> dict:
+    """Curriculum phase per generation (1 or 2); {} for runs without phases."""
+    col = run.hist_col("phase")
+    if col:
+        return {g: int(v) for g, v in zip(*col)}
+    return {}
+
+
 def elite_deltas(run: Run):
-    """Per gen g: list of fitness_g(k) - fitness_{g-1}(k) for keys present in both."""
+    """Per gen g: list of fitness_g(k) - fitness_{g-1}(k) for keys present in both.
+
+    Pairs that straddle a curriculum phase switch are skipped: the fitness
+    *formula* changes there (returns -> score), so that difference is not seed
+    noise and would dominate any statistic built on these deltas.
+    """
     by_gen = run.genomes_by_gen()
+    phase = gen_phase(run)
     gens = list(by_gen)
     out = {}
     for prev, cur in zip(gens, gens[1:]):
+        if phase.get(prev) != phase.get(cur):
+            continue
         before = {g["key"]: g["fitness"] for g in by_gen[prev]}
         out[cur] = [g["fitness"] - before[g["key"]] for g in by_gen[cur] if g["key"] in before]
     return out
@@ -897,21 +913,34 @@ def check_seed_noise(run: Run, rep: Report):
         by_gen = run.genomes_by_gen()
         best = (list(by_gen), [max(g["fitness"] for g in p) for p in by_gen.values()])
     bmap = dict(zip(*best))
+    phase = gen_phase(run)
+    # per_gen already excludes generations whose predecessor is in another phase
     common = [g for g in per_gen if g in bmap and (g - 1) in bmap]
-    d_best = [bmap[g] - bmap[g - 1] for g in common]
-    d_elite = [per_gen[g] for g in common]
-    sd_gen, sd_best = sd(d_elite), sd(d_best)
-    r = pearson(d_elite, d_best)
-    ratio = sd_gen / sd_best if sd_best and sd_best > 0 else float("nan")
-    verdict = "WARN" if (math.isfinite(ratio) and ratio >= 0.5) else "PASS"
+    groups = {}
+    for g in common:
+        groups.setdefault(phase.get(g, 0), []).append(g)
+    worst_r2, parts = 0.0, []
+    for ph, gs in sorted(groups.items()):
+        d_best = [bmap[g] - bmap[g - 1] for g in gs]
+        d_elite = [per_gen[g] for g in gs]
+        r = pearson(d_elite, d_best)
+        r2 = r * r if math.isfinite(r) else float("nan")
+        sd_b = sd(d_best)
+        ratio = sd(d_elite) / sd_b if sd_b else float("nan")
+        label = f"phase {ph}" if ph else "all gens"
+        parts.append(f"{label}: {len(gs)} gens, r = {fmt(r, 3)}, r^2 = {fmt(r2, 3)}, "
+                     f"sd(D)/sd(dB) = {fmt(ratio, 3)}")
+        if math.isfinite(r2):
+            worst_r2 = max(worst_r2, r2)
+    verdict = "WARN" if worst_r2 >= 0.25 else "PASS"
     rep.check("seed noise vs best_fitness movement",
-              "D_g = mean_k delta_k,g (generation's seed-difficulty shift); dB_g = best_g - best_{g-1}; "
-              "ratio = sd(D) / sd(dB); r = corr(D, dB)",
-              f"{len(common)} gens; sd(D) = {fmt(sd_gen)}; sd(dB) = {fmt(sd_best)}; ratio = {fmt(ratio, 3)}; "
-              f"r = {fmt(r, 3)} (r^2 = {fmt(r * r, 3) if math.isfinite(r) else 'nan'})",
-              f"{fmt(100 * ratio, 1)}% of best-fitness jitter is matched by seed shifts; "
-              f"r^2 = share of dB variance explained by seed difficulty",
-              verdict, "WARN if ratio >= 0.5 (generation-to-generation best_fitness mostly tracks which seeds were drawn)")
+              "within each phase (pairs across a phase switch excluded): D_g = mean_k delta_k,g "
+              "(generation's seed-difficulty shift); dB_g = best_g - best_{g-1}; r = corr(D, dB); "
+              "r^2 = share of dB variance linearly explained by D (association, not causation)",
+              "; ".join(parts),
+              f"max r^2 = {fmt(worst_r2, 3)}: seed difficulty explains up to {fmt(100 * worst_r2, 1)}% "
+              "of generation-to-generation movement in best fitness",
+              verdict, "WARN if r^2 >= 0.25 in any phase")
     return deltas
 
 

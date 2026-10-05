@@ -28,7 +28,9 @@ Curriculum (`--phase1-steps N`): rows with `phase == 1` have
 `fitness` / `best_fitness` / `mean_fitness` are the *selection* fitness: with
 `--survival-bonus B` (in run_args) each episode counts `score + B*steps/3000`, so
 `fitness == mean(score + B*steps/3000 + R*min(returns, C))` with `--return-bonus R`,
-`--return-cap C` (B + R*C < 1 is enforced, so a point outweighs all shaping). `raw_fitness` / `best_raw` / `mean_raw` are
+`--return-cap C` (B + R*C < 1 is enforced, so within one game a point outweighs all
+shaping; across a 5-game mean an extra point is worth 0.2, so shaping can reorder
+genomes whose raw means differ slightly). `raw_fitness` / `best_raw` / `mean_raw` are
 plain mean game score. Validation and champion selection always use raw score.
 
 Seed ranges (disjoint by construction):
@@ -47,7 +49,9 @@ Episode-level behaviour fields (from `episode.run_episode`):
 - `returns`: our contacts after which the ball reached the opponent's half.
 - `act_both`: fraction of steps with forward and backward both pressed (they cancel).
 - `out_sat`: fraction of output values < 0.02 or > 0.98 (all-or-nothing outputs, where
-  small weight mutations change no action).
+  small weight mutations change no action). Normalised by 3 outputs per step, so for
+  2-output (`direction` mapping) networks the logged value is 2/3 of the true fraction —
+  multiply by 1.5. Not used in any reported result.
 
 Clarifications:
 - `validation.jsonl` `train_fitness` is the genome's *selection* fitness that
