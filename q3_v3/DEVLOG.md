@@ -79,3 +79,32 @@ with a relative path created empty dirs under `q3_v3/out/`; removed. The
 ported scripts now write scratch files to `$TMPDIR/q3_audit` only. I also
 first ran `check_floor.py` from the wrong directory (ModuleNotFoundError) —
 the math checks need the CWD to be `q3_v3/`; `audit/run_all.sh` handles it.
+
+## 2026-10-04 — fixing the plumbing before spending anything
+
+Decision: apply only the fixes that cannot change what the loop searches,
+and keep the three that do (code regex, duplicates in the prompt, 4-decimal
+scores) as shipped, so deliverable 3's default arm is still the shipped
+loop. Each fix has a check in `tests/test_loop_fixes.py` (14/14).
+
+- **Scoring in subprocesses** (`evo/sandbox.py`). The point that needed
+  proving was "an honest candidate scores the same". Checked bit-for-bit on
+  7 programs (SEED, the 4 mock programs, two realistic ones) on PUBLIC and
+  HELD_OUT before wiring it in — identical to the last digit, 0.1–0.7 s per
+  candidate. All of the audit's exploits now fail; the SEED still scores
+  its true −0.02719 after each of them.
+- **One paid call at a time.** Same prompt for all four candidates of a
+  generation, so the search is unchanged; a failure now loses nothing.
+  `sanity_check.sh` requires `run()` to raise `BudgetExhausted` at the cap,
+  so a stop still raises — with the best-so-far attached for `main` to
+  write.
+- **New per-run files**: `responses.jsonl` (every call, including failures,
+  with `finish_reason`) and `run_meta.json` (settings, git commit, stop
+  reason, PUBLIC and HELD_OUT score of the champion, suspicious imports).
+  `run_log.jsonl` and `token_log.jsonl` are exactly as before.
+- **Residual risk, written down:** the sandbox removes the key and the
+  repo's modules from a candidate's reach but does not jail files or the
+  network.
+- `runs/mock-smoke` is kept and committed: a run made with the shipped loop
+  and shipped `spend.py`, which priced it at $0.02; the fixed `spend.py`
+  prices it at $0.00.

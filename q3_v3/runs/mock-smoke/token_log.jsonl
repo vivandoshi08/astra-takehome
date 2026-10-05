@@ -1,0 +1,12 @@
+{"call": 1, "tag": "mock|gen0", "input_tokens": 865, "output_tokens": 207, "cumulative": 1072, "wall_ts": 1791174795.2466078}
+{"call": 2, "tag": "mock|gen0", "input_tokens": 865, "output_tokens": 207, "cumulative": 2144, "wall_ts": 1791174795.246739}
+{"call": 3, "tag": "mock|gen0", "input_tokens": 865, "output_tokens": 207, "cumulative": 3216, "wall_ts": 1791174795.246784}
+{"call": 4, "tag": "mock|gen0", "input_tokens": 865, "output_tokens": 196, "cumulative": 4277, "wall_ts": 1791174795.2468202}
+{"call": 5, "tag": "mock|gen1", "input_tokens": 1260, "output_tokens": 196, "cumulative": 5733, "wall_ts": 1791174795.308722}
+{"call": 6, "tag": "mock|gen1", "input_tokens": 1260, "output_tokens": 135, "cumulative": 7128, "wall_ts": 1791174795.308773}
+{"call": 7, "tag": "mock|gen1", "input_tokens": 1260, "output_tokens": 196, "cumulative": 8584, "wall_ts": 1791174795.308813}
+{"call": 8, "tag": "mock|gen1", "input_tokens": 1260, "output_tokens": 27, "cumulative": 9871, "wall_ts": 1791174795.3088498}
+{"call": 9, "tag": "mock|gen2", "input_tokens": 1260, "output_tokens": 196, "cumulative": 11327, "wall_ts": 1791174795.358577}
+{"call": 10, "tag": "mock|gen2", "input_tokens": 1260, "output_tokens": 135, "cumulative": 12722, "wall_ts": 1791174795.358627}
+{"call": 11, "tag": "mock|gen2", "input_tokens": 1260, "output_tokens": 27, "cumulative": 14009, "wall_ts": 1791174795.358665}
+{"call": 12, "tag": "mock|gen2", "input_tokens": 1260, "output_tokens": 196, "cumulative": 15465, "wall_ts": 1791174795.358699}
