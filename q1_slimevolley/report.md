@@ -1,288 +1,298 @@
 # Q1 — Slime volleyball with NEAT
 
-**Result:** held-out mean **−0.37, 95% CI [−0.59, −0.15]** over 100 episodes → **T3**
-(bonus not reached). The same inputs and shaping without the curriculum score −4.78.
-The breakthrough happened on **1 of 3 seeds** with the identical command; see
-*Replication*.
+**Result (3 seeds, 100 held-out episodes each):** every seed reaches **T3 or better** and
+the mean across seeds is **+0.10**.
+
+| seed | held-out mean [95% CI] | W / D / L |
+|---|---|---|
+| 0 | −0.16 [−0.37, +0.05] | 19 / 45 / 36 |
+| 1 | **+0.34 [+0.14, +0.54]** | 39 / 45 / 16 |
+| 2 | +0.12 [−0.06, +0.30] | 30 / 44 / 26 |
+
+**Bonus tier (> 0) reached.** I committed a headline rule before these runs: pick the
+best *validation* score. Seeds 1 and 2 tie on it at +0.55. I don't break the tie with
+held-out data, and the claim doesn't need me to: both tied champions are above 0
+held-out.
+
+Getting here took one change to how outputs become actions (*How the replication was
+fixed*). With the original mapping, the identical command escaped the net-camper trap
+on **1 of 3** seeds (−0.37 / −4.77 / −4.79).
 
 Every number here is re-derivable from `runs/<id>/` (schema in [LOGS.md](LOGS.md));
-`analyze_run.py` recomputes them all (0 FAIL on both full runs). Commit history is the
-lab notebook: each code change and each result is its own commit.
+`analyze_run.py` recomputes them all (0 FAIL on every full run). The commit history is
+the lab notebook.
 
 ## Pipeline
 
-- **`episode.py`** — `play_episode`: 3 sigmoid outputs → MultiBinary
-  `[forward, backward, jump]`, each pressed if > 0.5. It also resets the opponent's RNN
-  every episode (see *What went wrong* #1). `run_episode` records per-episode detail:
-  points, ball contacts, returns, movement, jumps, court zone.
-- **`evolve.py`** — fitness is the mean over 5 seeded games, shared by every genome in a
-  generation and fresh each generation. The **champion is picked on 20 fixed validation
-  seeds**, never on training fitness. Seed ranges are disjoint by construction:
-  train `[0, 1e6)`, held-out `[1e6, 2e6)`, validation `2e6+`, probes `3e6+`.
-  Snapshots are saved every 10M steps. The run stops at a generation boundary before the
-  budget is reached, so no partial generation is thrown away.
-- **Curriculum** (`--phase1-steps`) — until 40M steps, selection fitness per game is
-  `returns + 0.3·steps/3000`, with no score term. After that it is
-  `score + 0.3·steps/3000 + 0.07·min(returns, 9)`. `evolve.py` rejects any setting where
-  shaping could reach one point.
-- **`configs/relative.ini`** — differences from the shipped config:
-  - two derived inputs, `ball x − my x` and `ball y − my y`
-  - sigmoid only
-  - `response 0.2`
+- **`episode.py`** — `play_episode(net, env)` (signature unchanged):
+  - resets the built-in opponent's RNN every episode (*What went wrong* #1)
+  - maps outputs to actions through `action_from_outputs`, using the mapping the run's
+    config declares
+  - **`direction`** (used for the headline): 2 sigmoid outputs. One sets movement:
+    above 2/3 forward, below 1/3 backward, otherwise stay. The other jumps when above
+    0.5.
+  - **`threshold`** (original): 3 outputs, each button pressed when above 0.5.
+  - `run_episode` records points, ball contacts, returns, movement, jumps and court
+    zone for every episode.
+- **`evolve.py`** — fitness is the mean over 5 seeded games, shared by the whole
+  generation and fresh each generation.
+  - The **champion is picked on 20 fixed validation seeds**, never on training fitness.
+  - Seed ranges are disjoint: train `[0, 1e6)`, held-out `[1e6, 2e6)`, validation
+    `2e6+`, probes `3e6+`.
+  - Snapshots every 10M steps.
+  - Stops at a generation boundary within budget.
+  - Any crash is recorded in the run directory.
+- **Curriculum** (`--phase1-steps 40M`) — selection fitness per game is
+  `returns + 0.3·steps/3000` until 40M steps, with no score term. After that it is
+  `score + 0.3·steps/3000 + 0.07·min(returns, 9)`. Shaping is capped below one point
+  (B + R·cap = 0.93 < 1).
+- **Configs** — `configs/direction_r1.ini` differs from the original shipped
+  `neat_config.ini` (first commit) only in:
+  - 2 derived inputs (`ball x − my x`, `ball y − my y`)
+  - sigmoid-only nodes
   - lower delete probabilities
   - `compatibility_threshold 2.0`
+  - 2 outputs with `[Action] mapping = direction`
 
-  The shipped `neat_config.ini` keeps 12 inputs, which `sanity_check.sh` asserts.
+  The `[Action]` section is our own; neat ignores it, `evolve.load_config` reads it,
+  and `make_net` attaches it to the network. Response stays at 1.0, the shipped value.
+  `neat_config.ini` itself was changed early on (`dc6408d`: sigmoid-only,
+  compatibility 2.0) but keeps 12 inputs and 3 outputs, which `sanity_check.sh` asserts.
 - **Tools:**
-  - `evaluate.py` — held-out score, t interval and bootstrap interval
-  - `analyze_run.py` — consistency, bias and degeneracy checks with formulas
-  - `reward_check.py` — ranks fixed policies under each fitness formula
-  - `replay.py` / `replay_snapshots.py` — GIFs with a contacts HUD, cross-checked
-    against the logs
+  - `evaluate.py` — t interval and bootstrap interval
+  - `analyze_run.py`
+  - `reward_check.py` — ranks fixed policies under every fitness formula
+  - `mapping_check.py`
+  - `replay.py` / `replay_snapshots.py` — HUD, cross-checked against the logs
   - `architecture.py`, `behavior.py`
-  - `pipeline_test.py` — the falsification test in *What went wrong* #4
+  - `pipeline_test.py`
+  - `experiments/` — the hypothesis, mapping and replication scripts
 
-**Reproduce the best run** (conda env `astra`, Python 3.11; ~25 min on 9 cores):
+**Reproduce** (conda env `astra`, Python 3.11; ~25 min on 9 cores; seeds 0, 1, 2):
 
 ```sh
-python evolve.py --seed 0 --config configs/relative.ini \
+python evolve.py --seed 1 --config configs/direction_r1.ini \
   --phase1-steps 40000000 --phase1-survival 0.3 \
-  --survival-bonus 0.3 --return-bonus 0.07 --return-cap 9 --run-id full100m_curriculum_s0
-python evaluate.py --winner runs/full100m_curriculum_s0/champion.pkl --episodes 100
+  --survival-bonus 0.3 --return-bonus 0.07 --return-cap 9 --run-id full100m_direction_s1
+python evaluate.py --winner runs/full100m_direction_s1/champion.pkl --episodes 100
 ```
 
-The run used 98,527,682 of 100,000,000 steps over 227 generations. Re-running the same
-command (checked with the final code on 1.5M-step runs) gives byte-identical
-`genomes.jsonl`, `validation.jsonl` and champion. Only wall-clock timing fields differ.
+`experiments/full_direction.sh` runs all three seeds plus evaluation and replays. The
+same command reproduces byte-identical `genomes.jsonl`, `validation.jsonl` and champion,
+whether run with 3 or 9 workers.
 
 ## Fitness curve
 
-![fitness curve](runs/full100m_curriculum_s0/analysis/fitness_curve.png)
+![old vs new mapping](experiments/mapping_comparison.png)
 
-Phase 1 runs to generation 116. The selection-fitness lines (blue and orange) measure
-returns, so they sit above zero. At the switch they drop onto the score scale. The
-lines worth reading are *train best raw* (green) and *champion val* (brown).
+Champion validation score against steps, same seeds, same fitness; only the action
+mapping differs.
+- **Direction mapping:** every seed escapes −4.7 between 7M and 12M steps. Seeds 0 and
+  2 reach 0 by 20M, *before score is part of fitness*. All three end at +0.45 to +0.55.
+- **Old mapping:** seed 0 escapes later (~17M); seeds 1 and 2 stay net campers for the
+  whole budget.
 
-- **Generations 0–60:** flat at −4.7. The population is a net camper (see *Behavior*).
-- **Generations 60–116:** the champion climbs −4.6 → −1.95 while score is **not** part of
-  fitness. Learning to return the ball is what moved the score.
-- **After the switch:** the champion climbs to −0.05 on validation by generation 172 and
-  then plateaus.
-- **The population mean raw stays near −4.5 throughout.** Most offspring of good genomes
-  are broken by mutation, so the mean is not a progress measure here.
-
-Two confounds are measured, not assumed:
-- **Seed difficulty:** 68% of generation-to-generation jitter in training-best is
-  explained by shifts in seed difficulty. This is why a fixed-seed validation track
-  exists.
-- **Winner's curse:** among validated genomes, training overstates validation by +0.15
-  [0.10, 0.19].
-
-Baseline curve: `runs/full100m_baseline_s0/analysis/` — flat for all 420 generations.
+Per-run curves with population best and mean, train and raw:
+`runs/full100m_direction_s*/analysis/fitness_curve.png`.
+- The population **mean** raw score stays near −4.5 even late on. Mutation mostly breaks
+  good genomes, so it is not a progress measure.
+- Two confounds are measured each run:
+  - 72–83% of generation-to-generation jitter in training-best comes from seed
+    difficulty.
+  - Training overstates validation by +0.16 to +0.24 (winner's curse).
+  - Both are why only held-out numbers are reported.
 
 ## Champion evaluation
 
-| | curriculum (best run) | baseline (no curriculum) |
-|---|---|---|
-| mean score, 100 held-out episodes | **−0.370** | −4.780 |
-| 95% CI (t / bootstrap) | [−0.593, −0.147] / [−0.590, −0.150] | [−4.872, −4.688] |
-| W / D / L | 19 / 38 / 43 | 0 / 0 / 100 |
-| points won / lost | 38 / 75 | 22 / 500 |
-| tier | **T3** (≥ −1.0; the whole CI is above it) | T1 |
+| | seed 0 | seed 1 | seed 2 | old mapping (s0/s1/s2) | no curriculum |
+|---|---|---|---|---|---|
+| held-out mean | −0.160 | **+0.340** | +0.120 | −0.37 / −4.77 / −4.79 | −4.78 |
+| 95% CI (t) | [−0.365, +0.045] | [+0.140, +0.540] | [−0.063, +0.303] | | [−4.87, −4.69] |
+| 95% CI (bootstrap) | [−0.350, +0.050] | [+0.140, +0.540] | [−0.060, +0.300] | | |
+| W / D / L | 19/45/36 | 39/45/16 | 30/44/26 | | 0/0/100 |
+| points won / lost | 39/55 | 63/29 | 46/34 | | 22/500 |
+| tier | T3 | bonus (CI > 0) | bonus (mean > 0) | T3 / T1 / T1 | T1 |
 
-Validation picked the champion. The 60M snapshot scored better on 20 held-out games
-(0.00 vs −0.35), but the intervals overlap and choosing on held-out data would bias the
-headline, so I didn't.
+Every game reaches the 3000-step limit, which is normal for competent play here (see
+*Behavior*).
 
 ## Champion architecture
 
-Genome 9993 has 14 inputs and **8 nodes** (3 outputs + 5 hidden) with
-**11 enabled connections** (34 disabled). The effective network, counting only nodes
-on an input→output path, is **6 nodes and 10 connections**. Every node uses
-**sigmoid** with sum aggregation, response 0.2, feed-forward. Full table:
-[architecture.md](runs/full100m_curriculum_s0/architecture.md).
+| champion | nodes (outputs + hidden) | enabled connections | effective nodes / connections | activations |
+|---|---|---|---|---|
+| seed 0 | 6 (2 + 4) | 10 (16 disabled) | 6 / 10 | sigmoid × 6 |
+| seed 1 | 4 (2 + 2) | 19 (13 disabled) | 4 / 19 | sigmoid × 4 |
+| seed 2 | 4 (2 + 2) | 16 (11 disabled) | 4 / 16 | sigmoid × 4 |
 
-The wiring is readable:
-- **Strongest weight:** `backward ← (ball x − my x) × +11.24`, meaning *step back when
-  the ball is behind me*. This is ball tracking through a single weight on the relative
-  input, the mechanism that input was added to make reachable.
-- `forward ← ball vx × −4.13`: step forward when the ball heads toward the net.
-- **Jump:** its bias (×5 inside neat's sigmoid) outweighs its inputs, so it is always on.
+All are feed-forward, sum aggregation, response 1.0. Tables:
+`runs/full100m_direction_s*/architecture.md`.
+
+- **All three found the same core:** `direction ← (ball x − my x)` with weight
+  −8.1 / −11.5 / −11.4, meaning *move toward the ball's x*. That's the one-weight
+  tracker `mapping_check.py` predicted.
+- **Seed 1 also learned jump timing:** its jump output is driven mainly by the ball's
+  vertical velocity (−5.2), and it jumps on 44% of steps. Seed 0 jumps on 99%.
 
 ## Behavioral analysis
 
-Watched across 10M snapshots, on the same held-out game each time:
-`runs/full100m_curriculum_s0/snapshots/replays/` and `snapshots/progress.md`.
+Seed 1's replays at 10M → 60M → final (`runs/full100m_direction_s1/snapshots/replays/`)
+show the progression net camper → chasing → rallying. Behaviour on 20 held-out games
+(`behavior.py`):
 
-1. **Net camper (0–10M, and the baseline throughout).** Presses forward and jump, sits
-   pinned against the net hopping, and never chases. 93% of its lost points land behind
-   it. It is one bias mutation from random play and blocks the odd ball, which is why
-   it is such a strong trap.
-2. **Chasing (10–20M).** The 10M generation-best already makes 26 contacts per game, and
-   87% of its jumps hit the ball by 20M.
-3. **Rallying (30M →).** Covers its whole half (61% of time at the net, 24% mid, 15%
-   back) and moves 453 units per game (built-in policy ~555). Makes 69 contacts and 18
-   returns per game. **Every game reaches the 3000-step limit.**
+| | seed 0 | seed 1 | seed 2 | built-in policy (our seat) |
+|---|---|---|---|---|
+| ball on our half | 55% | 56% | 67% | 49% |
+| longest hold, mean / max (steps) | 143 / 184 | 126 / 154 | 334 / 498 | 185 / 292 |
+| contacts / returns per game | 64 / 25.5 | 64 / 26.1 | 81 / 15.8 | 45 / 24 |
+| distance moved per game | 612 | 706 | 913 | ~555 |
+| time at the net / mid / back | 75 / 17 / 8% | 76 / 17 / 7% | 54 / 21 / 25% | |
+| jump pressed | 99% of steps | 44% | 74% | |
 
-**Degenerate and exploit-like behavior:**
-- **Jumps on 100% of steps** from 30M on. It steers while airborne, and 61% of its jumps
-  still hit the ball.
-- **Multi-touch possession:** the ball is on its half 67% of the time (built-in policy
-  49%), with 0.26 returns per contact (built-in 0.53).
-- `analyze_run`'s juggling detector **fired** at population level: 0.12 returns per
-  contact, timeouts rising 0% → 10%. I tested whether this is clock-running instead of
-  accepting it:
-  - The champion's longest hold is 254 / 333 steps (mean / max), against the built-in
-    policy's 185 / 292. A staller would hold for thousands.
-  - The built-in policy playing against itself also reaches the time limit in 20 of 20
-    games. Timeouts are what competent play looks like in this environment.
-  - **Verdict:** not clock-running, but the possession style is real.
-- **How it loses** ([behavior.md](runs/full100m_curriculum_s0/behavior.md)): 48% of lost
-  points are its own touch dropping in front of it, 17% are untouched serves, and 0%
-  land behind it. **Its T3 comes mostly from not losing:** 38 draws out of 100 games.
-- **It is weakest at the start.** Over 40 held-out games it lost 33 points.
-  - 42% of them came in the first 300 steps (the first 10% of the game).
-  - 24% came within 100 steps of a serve, and 7 were serves it never touched.
-  - 16 of 40 games had no point lost at all.
-  - Once into the rally rhythm it rarely loses. This is a learned weakness I report
-    rather than shape away, since a penalty on serve losses would invite stalling.
-
-**What shaping did:**
-- **Survival-only shaping (B=0.5):** separated a hand-written tracker from the net
-  camper by just 0.06 per game, inside the noise. That run stayed flat for 83
-  generations.
-- **Phase-1 objective:** separates them by 2.4 (3.10 vs 0.66). It never ranks a policy
-  above one with more points (`reward_check.py`, probe seeds).
-- The survival term likely produced the possession-heavy style, since keeping the ball
-  aloft keeps the game going.
+- **Strategy:** all three track the ball's x along their whole half and play it back.
+  - Points are won by forcing errors: the opponent touched last.
+  - Points are lost mostly to their own touch dropping short in front of them (seeds
+    0 and 1).
+  - Seed 2 loses more balls behind it but holds possession longer.
+- **Exploit-like behaviour, checked rather than assumed:**
+  - `analyze_run`'s juggling detector fires at *population* level. Many genomes touch
+    the ball often and rarely return it, which is plausibly the survival term rewarding
+    keeping the ball alive.
+  - The champions are filtered by raw validation score. Seeds 0 and 1 hold the ball
+    *less* than the built-in policy, and seed 2 holds it longer (max 498 steps), but
+    nowhere near clock-running.
+  - Timeouts are not a stalling signal: the built-in policy playing against itself
+    reaches the 3000-step limit in 20 of 20 games.
+- **Constant jumping** (seed 0, and the old T3 champion) is not required for good play.
+  Seed 1, the strongest, jumps on 44% of steps.
+- **Earlier finding** (old T3 champion): 42% of its lost points came in the first 300
+  steps of a game, so openings were its weak spot.
+- **What shaping did:**
+  - Survival-only shaping separated a ball-tracker from a net camper by 0.06, inside
+    the noise.
+  - The phase-1 objective separates them by 2.4.
+  - **But phase 1 is only a stepping stone.** `reward_check` with the final champions
+    shows it ranking seed 0's champion (most returns, 25.8) above seed 2's and the
+    built-in policy, which win more points. So "more returns" stops tracking "more
+    points" once agents can rally.
+  - The score-based phase-2 formula passes that check, and all three champions were
+    selected in phase 2 (generations 99 / 141 / 128; the switch was at ~82).
 
 ## What went wrong, and how I found it
 
 1. **The opponent remembered the previous game.** `env.reset()` never resets the
-   built-in opponent's RNN. Replaying seed 7 twice gave 2903 steps, then 1194. An
-   auditor agent found replays diverged at step 0 on 30 of 30 seeds. Without this fix,
-   seeding could never make results reproducible. Fix: reset `env.policy` in
-   `play_episode`. Afterwards a replay matches a fresh env exactly.
-2. **The champion was the luckiest score, and the curve was partly measuring the
-   seeds.**
-   - The shipped driver keeps the highest training fitness ever seen. In generation 0,
-     a genome tied at −4.0 re-scored −4.9 on fresh seeds.
-   - Measured on a 20M run, training overstates validation by +0.20 [0.17, 0.23].
-     Validation has its own version of this: in the baseline, the champion picked at
-     −4.55 out of ~1,260 validated genomes scores −4.78 held-out.
-   - Fix: champion chosen on fixed validation seeds, a validation track added to the
-     curve, and only held-out numbers reported.
-3. **Five runs learned nothing, and the logs at first could only say *that*, not
-   *why*.**
-   - 89% of games were 5–0 losses. In most generations, 85–100% of genomes had the same
-     points-won vector: points were decided by the serve, not the genome.
-   - I added ball-contact counting by wrapping `Particle.bounce`. Trajectories are
-     byte-identical with and without the wrapper. Contacts were 1.5 per game, the same
-     as random play (1.4).
-   - The replays showed the net camper, and the logs agreed: forward 93%, pinned at the
-     net more than 90% of the time.
-4. **Was the pipeline broken, or the objective?** A generation-0 champion went unbeaten
-   for 83 generations, so I tested the pipeline directly (`pipeline_test.py`): same
-   `evolve.py`, fitness swapped for ball contacts.
-   - Mean contacts went 1.57 → 3.10 in 5M steps, so the pipeline works.
-   - The problem was noise. Per-game score has sd ~0.33 from serve luck, while shaping
-     differences under my "< 1 point" cap were about 0.03–0.05. A 5-game fitness has
-     SE 0.15; the entire camper → tracker gap was 0.20.
-   - This led directly to the curriculum.
-5. **I introduced a reward hack myself.** My first return bonus was uncapped. Winning
-   points ends the game sooner, so a 0–0 rally to the time limit could out-earn a quick
-   5–0 win.
-   - Fix: cap at 9 returns, and refuse any `B + R·cap ≥ 1`.
-   - `reward_check.py` now tests every formula against fixed policies: idle, camper,
-     backline hider, random, hand-written tracker, the built-in policy.
+   built-in opponent's RNN: seed 7 replayed twice gave 2903 steps, then 1194. An auditor
+   agent found 30 of 30 replays diverged at step 0. Fixed in `play_episode`; a replay
+   now matches a fresh env exactly.
+2. **The champion was the luckiest score, and the curve partly measured the seeds.**
+   The shipped driver keeps the highest training fitness ever seen. Training overstates
+   validation by +0.15 to +0.24, and validation overstates held-out too: the baseline's
+   −4.55 became −4.78. Fix: a validation-picked champion, a validation track on the
+   curve, and only held-out numbers reported.
+3. **Five runs learned nothing, and at first the logs could only say *that*.**
+   - 89% of games were 5–0 losses, and 85–100% of genomes per generation had the same
+     points vector, decided by the serve.
+   - I added contact counting by wrapping `Particle.bounce`. Trajectories are
+     byte-identical with and without it. Contacts were 1.5 per game, the same as
+     random play.
+   - Replays showed the net camper.
+4. **Pipeline or objective?** A generation-0 champion went unbeaten for 83 generations.
+   `pipeline_test.py` swaps fitness for contacts in the same `evolve.py`: contacts went
+   1.57 → 3.10, so the pipeline works. Score noise (5-game SE 0.15) swamped a 0.20
+   camper → tracker gap, which led to the curriculum.
+5. **I introduced a reward hack myself.** My first return bonus was uncapped, so a 0–0
+   rally to the time limit out-earned a quick 5–0 win. Fixed by a cap of 9 plus
+   enforcing `B + R·cap < 1`. `reward_check.py` guards every formula.
 6. **Budget plumbing.**
-   - The shipped generation-boundary stop could never fire: 7 workers × ⌊100M/7⌋ <
-     100M. Every run ended with a worker hitting its cap mid-generation, discarding up
-     to 5.35% of the budget.
-   - My first guard then stopped runs at 81% of budget. Validation sent 3 big jobs to 3
-     workers, so those workers hit their caps early.
-   - Fix: one episode per job. Per-worker spread fell from 11% to 1.3%, with results
-     identical game by game, and the full runs used 98.5–99.2% of the budget.
-   - `budget.py` itself is untouched.
-7. **Smaller bugs, each caught by a test.**
-   - The CI used a fixed t = 1.984 (df = 99); for 20 episodes it should be 2.093, so
-     intervals were 5% too narrow.
-   - The relative-input change crashed hand-written policies (`AttributeError`).
-   - Snapshot labels collided below 10M, and the 20M snapshot was skipped because runs
-     stop just short of round numbers.
-   - The replay cut games off at 1400 steps (seed 2 showed −1 instead of −3).
-8. **A run died silently.** One run in the hypothesis experiment below stopped at 14.4M
-   with no final outputs and no error anywhere.
-   - `evolve.py` only caught budget stops and Ctrl-C, and the experiment script sent
-     stderr to `/dev/null`.
-   - Reproducing it with stderr kept showed neat's `RuntimeError`: that arm's config
-     made 33 species × 2 minimum > population 64.
-   - Fix: any exception is now recorded in `stdout.log` and `run_args.json`, every output
-     is still written, and the process exits 1. Tested with a deliberately broken
-     config.
-   - Side result: the rerun was byte-identical to the original even though it used 9
-     workers instead of 3.
+   - The shipped generation-boundary stop could never fire (7 × ⌊100M/7⌋ < 100M), so
+     up to 5.35% of the budget was thrown away mid-generation.
+   - My first guard then stopped runs at 81%, because validation jobs piled onto 3
+     workers.
+   - One episode per job fixed it: identical results, spread 11% → 1.3%, 97–99% of
+     budget used. `budget.py` is untouched.
+7. **Smaller bugs, each caught by a test:**
+   - a fixed t = 1.984 for 20-episode CIs (should be 2.093)
+   - the relative-input change crashing hand-written policies
+   - snapshot labels colliding, and the 20M snapshot being skipped
+   - replays truncated at 1400 steps
+8. **A run died silently.** `evolve.py` only caught budget stops, and the script sent
+   stderr to `/dev/null`. Reproduced with stderr kept: neat's `RuntimeError` (33
+   species × 2 > population 64). Crashes are now recorded and outputs still written.
+   The rerun was byte-identical with 3 vs 9 workers.
+9. **The method worked on 1 of 3 seeds, and five plausible fixes didn't help.** The
+   cause was the action mapping, found by ablation. Full story below.
+10. **The stepping-stone objective is misaligned at the top end.** Found by re-running
+    `reward_check` with the final champions (see *Behavior*). It's harmless here
+    because selection hands over to score at 40M, but a longer phase 1 would optimise
+    the wrong thing.
 
-## Replication, and anything surprising
+## How the replication was fixed
 
-- **The breakthrough is seed-dependent: 1 of 3 seeds.** Identical command, 100
-  held-out episodes each:
+**1. The problem.** With the original mapping, the identical curriculum command reached
+−0.37 on seed 0 but stayed a net camper on seeds 1 and 2 (−4.77, −4.79). I fixed seed
+0 as the headline before running them.
 
-  | seed | held-out mean [95% CI] | best phase-1 fitness | champion |
-  |---|---|---|---|
-  | **0** | **−0.37 [−0.59, −0.15]** | 25.1 | rallying player |
-  | 1 | −4.77 [−4.86, −4.68] | 3.1 | net camper |
-  | 2 | −4.79 [−4.87, −4.71] | 3.7 | net camper |
+**2. Five hypotheses, one change each** (phase 1, 15M steps, fresh seeds 10–12;
+`experiments/discovery_results.md`):
 
-  - Seeds 1 and 2 never found the first chasing behavior. They stayed at 99% of time at
-    the net and are indistinguishable from the no-curriculum baseline (−4.78).
-  - The curriculum makes the breakthrough *possible* but does not make it reliable.
-    Escaping the net-camper trap is a rare discovery event: seed 0's 10M gen-best was
-    already chasing.
-  - I fixed seed 0 as the headline *before* seeing seeds 1–2, so selection on held-out
-    cannot have inflated it. But one success in three is the honest description of the
-    method.
-  - Run dirs: `runs/full100m_curriculum_s{1,2}`.
-- **Why seed 0 escaped and others didn't: five hypotheses, one test each.** Free checks
-  on existing logs first:
-  - Seed 0's ball-tracking weight grew 3.5 → 8.6 → 10.8 at 10/20/30M while its
-    validation climbed. In seeds 1–2 that weight never exceeded ~2.
-  - Seed 0 was the only one of seeds 0–2 whose generation-0 population had a tracking
-    weight above 2.5.
-  - Seeds 1–2's generation-best kept only 55–59% of its fitness when re-scored the next
-    generation; seed 0's kept 88%.
+| hypothesis | change | escaped |
+|---|---|---|
+| control | — | 0/3 |
+| H1 weights too small | init 1→3, mutation 0.5→1.0 | 0/3 |
+| H2 too few genomes | population 64→192 | 0/3 |
+| H3 evaluation noise | 10 games per genome | 0/3 |
+| H4 deletion drift | delete probability → 0.05 | 0/3 |
+| H5 lost diversity | compatibility 2.0→1.0 | 0/2 (+1 crashed, #8) |
 
-  Then one arm per hypothesis, each a single change, phase 1 only, 15M steps, on fresh
-  seeds 10–12 shared by all arms (`experiments/`; table in
-  [discovery_results.md](experiments/discovery_results.md)):
+H1's failure was the clue. It grew tracking weights as large as seed 0's champion's
+(7.8–17.9) and still didn't chase.
 
-  | hypothesis (change) | escaped | best phase-1 fitness (seed 0 at 15M: 8.8) |
-  |---|---|---|
-  | control | 0/3 | 2.7–3.9 |
-  | H1 weights too small (init stdev 1→3, mutation 0.5→1.0) | 0/3 | 2.9–3.9 |
-  | H2 too few genomes (pop 64→192) | 0/3 | 2.5–2.7 |
-  | H3 evaluation noise (10 games per genome) | 0/3 | 2.0–2.1 |
-  | H4 deletion drift (delete prob → 0.05) | 0/3 | 2.7–3.3 |
-  | H5 lost diversity (compatibility 2.0→1.0) | 0/2, 1 crashed | 2.5–3.1 |
+**3. The diagnosis, by ablating seed 0's champion** (probe seeds):
 
-  None helped. What each showed:
-  - **H1:** the most informative failure. Wide weights *did* produce tracking weights as
-    large as seed 0's (7.8, 11.2, 17.9) with no chasing, so a large weight is not
-    sufficient; the right combination of signs and weights is what is rare.
-  - **H5:** already contradicted by the logs (seed 0 had fewer species: 3.2 vs 4.6).
-  - **Initialisation:** seeds 11 and 12 also started with a tracking weight above 2.5
-    and still didn't escape.
+| variant | phase-1 fitness | contacts |
+|---|---|---|
+| net camper (forward + jump) | 0.66 | 0.8 |
+| full champion | 18.3 | 70 |
+| remove `forward ← ball vx` | **0.66** (exactly a camper) | 0.8 |
+| remove tracking, keep that link | **0.06** (worse than a camper) | 0.8 |
 
-  **Conclusion:** escaping the net camper is a rare event, roughly 1 in 20 seed-runs by
-  15M, and no single setting I tried changes that. Three seeds per arm cannot detect a
-  modest improvement, so I report these as "no large effect", not "no effect".
-  Untried: a denser phase-0 objective (contacts, which `pipeline_test.py` showed
-  climbing, though only on seed 0), and portfolio restarts within one budget, which only
-  pay off if escape odds are not this low.
-- **Timeouts are normal for competent play:** the built-in policy playing against itself
-  reaches the 3000-step limit in every game. Any "stalling" detector needs that
-  baseline.
-- **Population mean stays near −4.5 even when the best is about 0.** In this space,
-  mutation is mostly destructive near good genomes.
-- **Time:** about 2.5 h of session time (16:08 → 18:35 by commit timestamps). The live walkthrough could take any commit;
-  `git log` shows the order things were found.
+- A camper holds forward on, so a tracking signal on *backward* just cancels it and the
+  agent stands still.
+- Gating forward without tracking is *worse* than camping.
+- So escaping needed two simultaneous changes, neither rewarded alone: a deceptive
+  valley. None of H1–H5 changes that.
+
+**4. The fix lives in the mapping, which the task leaves to us.**
+`mapping_check.py` scores hand-built "camper + tracking strength k" policies:
+
+| mapping | how fitness responds as k grows |
+|---|---|
+| threshold (original) | flat at 0.76 for every k up to 16 (valley) |
+| signed (difference of the 2 outputs) | also flat: saturated outputs never clear its dead zone |
+| **direction** | rises with k: 0.97 → 3.84 → 9.01 (7 → 29 → 45 contacts) |
+
+With one movement output, the tracking weight acts directly against "forward on".
+
+**5. Tested in evolution** (same protocol and seeds as step 2):
+
+| arm | escaped |
+|---|---|
+| direction alone | 1/3 |
+| direction + response 1.0 | **3/3** |
+| direction + wide weights | 0/3 |
+
+Response 1.0 matters: at 0.2 the tracking weight must reach ~20 instead of ~4.
+
+**6. Full replication** on the original seeds 0–2, pre-registered in
+`experiments/full_direction.sh`: 3 of 3 reach T3 or better (table at top). The fitness
+formula is **identical** to the old runs; only the action mapping and response
+changed, so no reward change can explain the gain.
+
+## Anything surprising
+
+- **The failure was in the action interface, not the reward or the search
+  settings.** Five search-side fixes did nothing; one interface change made the
+  breakthrough reliable.
+- **A stepping-stone objective can go wrong once it succeeds.** Phase 1 was essential to
+  escape the trap, and is misaligned at the top end.
+- **Time:** about 3 h of session time (16:08 → 19:10 by commit timestamps). Q2/Q3 were not attempted by me. `git log` shows
+  the order things were found.
