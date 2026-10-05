@@ -1,0 +1,98 @@
+{
+  "spiral": {
+    "n_genomes": 300,
+    "mutants_per_genome": 20,
+    "ops": {
+      "perturb": {
+        "mean": -0.025541071428571427,
+        "median": -0.0035714285714286698,
+        "damaged_frac": 0.236,
+        "share": 0.2817177897998845
+      },
+      "replace": {
+        "mean": -0.05545714285714285,
+        "median": 0.0,
+        "damaged_frac": 0.3353333333333333,
+        "share": 0.6116917905352172
+      },
+      "activation": {
+        "mean": -0.006814285714285714,
+        "median": 0.0,
+        "damaged_frac": 0.056,
+        "share": 0.07516151058353905
+      },
+      "structural": {
+        "mean": -0.03465357142857142,
+        "median": 0.0,
+        "damaged_frac": 0.23533333333333334,
+        "share": 0.3822285834340039
+      },
+      "full_default": {
+        "mean": -0.09066190476190475,
+        "median": -0.07500000000000007,
+        "damaged_frac": 0.5616666666666666,
+        "share": 1.0
+      },
+      "full_lowmut": {
+        "mean": -0.08305833333333333,
+        "median": -0.05357142857142849,
+        "damaged_frac": 0.5061666666666667,
+        "share": 0.9161326750354537
+      }
+    }
+  },
+  "spiral3": {
+    "n_genomes": 300,
+    "mutants_per_genome": 20,
+    "ops": {
+      "perturb": {
+        "mean": -0.021545833333333334,
+        "median": -0.0035714285714285587,
+        "damaged_frac": 0.22266666666666668,
+        "share": 0.34004715961934107
+      },
+      "replace": {
+        "mean": -0.038214285714285715,
+        "median": 0.0,
+        "damaged_frac": 0.24883333333333332,
+        "share": 0.6031170441628227
+      },
+      "activation": {
+        "mean": -0.006232142857142857,
+        "median": 0.0,
+        "damaged_frac": 0.0485,
+        "share": 0.09835880766954445
+      },
+      "structural": {
+        "mean": -0.020548809523809525,
+        "median": 0.0,
+        "damaged_frac": 0.15416666666666667,
+        "share": 0.3243116292615104
+      },
+      "full_default": {
+        "mean": -0.06336130952380953,
+        "median": -0.03214285714285714,
+        "damaged_frac": 0.4493333333333333,
+        "share": 1.0
+      },
+      "full_lowmut": {
+        "mean": -0.05505535714285714,
+        "median": -0.010714285714285676,
+        "damaged_frac": 0.37766666666666665,
+        "share": 0.8689112891861677
+      }
+    }
+  },
+  "verdicts": [
+    "C1 spiral: full_default -0.091 vs full_lowmut -0.083 -> supported",
+    "C2 spiral: perturb share 0.28 (<= 0.25) -> contradicted",
+    "H5 spiral: replace share 0.61 (>= 0.4) -> supported",
+    "H6 spiral: activation share 0.08 (>= 0.4) -> not supported",
+    "   spiral: structural share 0.38 (reported)",
+    "C1 spiral3: full_default -0.063 vs full_lowmut -0.055 -> supported",
+    "C2 spiral3: perturb share 0.34 (<= 0.25) -> contradicted",
+    "H5 spiral3: replace share 0.60 (>= 0.4) -> supported",
+    "H6 spiral3: activation share 0.10 (>= 0.4) -> not supported",
+    "   spiral3: structural share 0.32 (reported)"
+  ]
+}

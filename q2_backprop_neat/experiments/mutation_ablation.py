@@ -74,13 +74,16 @@ def main() -> int:
     out_dir = HERE / "runs" / "mechanism3"
     out_dir.mkdir(parents=True, exist_ok=True)
     report = {}
-    lowmut = load_config(HERE / "neat_config_lowmut.ini").genome_config
     for d in ("spiral", "spiral3"):
         X_fit, y_fit, X_val, y_val = driver.split_validation(*get_dataset(d)[:2], 0.2)
         config, genomes = snapshot(d, X_fit, y_fit, X_val, y_val)
         ops = {name: operator_config(config, r) for name, r in OPERATORS.items()}
         ops["full_default"] = copy.deepcopy(config.genome_config)
-        ops["full_lowmut"] = copy.deepcopy(lowmut)
+        # neat_config_lowmut.ini's two changes applied to the run's own genome
+        # config (a freshly loaded config has no innovation tracker: neat sets
+        # it during reproduction).
+        ops["full_lowmut"] = operator_config(
+            config, dict(weight_mutate_rate=0.2, bias_mutate_rate=0.2), base={})
         random.seed(0)
         changes = {name: [] for name in ops}
         for g in genomes:
