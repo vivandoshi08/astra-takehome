@@ -561,6 +561,14 @@ def test_default_identical(tmp):
             s.pop("git_commit")
             s["args"].pop("config")
         extra = sn["args"].pop("max_conns", "missing")
+        # Fields added after the baseline commit (the post-merge crash fix):
+        # allowed only with their normal-run values, so a completed run must
+        # still read completed with no neat error.
+        added_ok = True
+        for key, normal in (("completed", True), ("neat_error", None),
+                            ("neat_error_after_final", None)):
+            if key not in so:
+                added_ok &= sn.pop(key, normal) == normal
         cn = pickle.loads((new[4] / "champion.pkl").read_bytes())
         co = pickle.loads((old[4] / "champion.pkl").read_bytes())
         rn, ro = getattr(cn, "refined_params", None), getattr(co, "refined_params", None)
@@ -572,7 +580,7 @@ def test_default_identical(tmp):
                        == old[0].stdout.replace(str(old[4]), "<run>"))
         check(f"{name}: fitness_history.csv and genomes.jsonl byte-identical, summary.json "
               "equal (args gain only max_conns: null), same champion and stdout",
-              files_same and sn == so and extra is None and champ_same
+              files_same and sn == so and extra is None and added_ok and champ_same
               and new[0].returncode == old[0].returncode == 0
               and stdout_same,
               f"{new[1]['generations_run']} generations, held-out {new[1]['heldout_acc']:.3f}")
