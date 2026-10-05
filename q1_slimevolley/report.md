@@ -2,7 +2,8 @@
 
 **Result:** held-out mean **−0.37, 95% CI [−0.59, −0.15]** over 100 episodes → **T3**
 (bonus not reached). The same inputs and shaping without the curriculum score −4.78.
-The breakthrough is **seed-dependent**: see *Replication*.
+The breakthrough happened on **1 of 3 seeds** with the identical command; see
+*Replication*.
 
 Every number here is re-derivable from `runs/<id>/` (schema in [LOGS.md](LOGS.md));
 `analyze_run.py` recomputes them all (0 FAIL on both full runs). Commit history is the
@@ -213,17 +214,30 @@ Watched across 10M snapshots, on the same held-out game each time:
 
 ## Replication, and anything surprising
 
-- **The breakthrough is seed-dependent.** Same command, other seeds:
-  - Seed 1: still at random-play level at 35M steps (1.2 contacts per game, champion
-    validation −4.60), while seed 0 had 13.9 contacts and −1.95 by then.
-  - Final seed 1 / seed 2 held-out: *REPLICATION_RESULTS*.
-  - The curriculum makes the breakthrough *possible*; whether a population finds the
-    first chasing behavior is luck. I fixed seed 0 as the headline *before* seeing
-    seed 1, so choosing on held-out cannot have inflated it.
+- **The breakthrough is seed-dependent: 1 of 3 seeds.** Identical command, 100
+  held-out episodes each:
+
+  | seed | held-out mean [95% CI] | best phase-1 fitness | champion |
+  |---|---|---|---|
+  | **0** | **−0.37 [−0.59, −0.15]** | 25.1 | rallying player |
+  | 1 | −4.77 [−4.86, −4.68] | 3.1 | net camper |
+  | 2 | −4.79 [−4.87, −4.71] | 3.7 | net camper |
+
+  - Seeds 1 and 2 never found the first chasing behavior. They stayed at 99% of time at
+    the net and are indistinguishable from the no-curriculum baseline (−4.78).
+  - The curriculum makes the breakthrough *possible* but does not make it reliable.
+    Escaping the net-camper trap is a rare discovery event: seed 0's 10M gen-best was
+    already chasing.
+  - I fixed seed 0 as the headline *before* seeing seeds 1–2, so selection on held-out
+    cannot have inflated it. But one success in three is the honest description of the
+    method.
+  - The obvious next step (not done, for time) is making the discovery likely: more
+    seeds, a larger population early on, or restarting stuck runs. Run dirs:
+    `runs/full100m_curriculum_s{1,2}`.
 - **Timeouts are normal for competent play:** the built-in policy playing against itself
   reaches the 3000-step limit in every game. Any "stalling" detector needs that
   baseline.
 - **Population mean stays near −4.5 even when the best is about 0.** In this space,
   mutation is mostly destructive near good genomes.
-- **Time:** about 2.5 h of session time. The live walkthrough could take any commit;
+- **Time:** about 2 h of session time (16:08 → 18:00 by commit timestamps). The live walkthrough could take any commit;
   `git log` shows the order things were found.

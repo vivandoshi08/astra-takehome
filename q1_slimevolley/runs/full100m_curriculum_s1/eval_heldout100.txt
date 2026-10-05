@@ -1,0 +1,11 @@
+config: runs/full100m_curriculum_s1/config.ini
+100 held-out episodes (seeds 1000000..1000099)
+  mean -4.770  sd 0.468
+  95% CI (t)         [-4.863, -4.677]
+  95% CI (bootstrap) [-4.860, -4.670]
+  W/D/L 0/0/100   score counts {'-5.0': 79, '-4.0': 19, '-3.0': 2}
+  points won 23  lost 500
+  episode length mean 659  timeouts (3000 steps) 0
+  per episode: contacts 1.95  returns 1.04  opponent contacts 7.11  | outputs saturated 0.46
+  movement: 10 units/ep, 18.2 jumps/ep, 0.10 of jumps hit the ball | time at net/mid/back 0.99/0.01/0.00
+  action fractions fwd 1.00  back 0.00  jump 0.73  idle 0.00  both 0.00
