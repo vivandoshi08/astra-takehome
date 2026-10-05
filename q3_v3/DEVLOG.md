@@ -209,3 +209,17 @@ training images the gap closes. Not predicted: at 2048 images, 4000 epochs
 longer training still overfits. No model beats the honest optimum on images
 it did not train on. (The script prints the *expected* optimum, −0.00977;
 PUBLIC's own noise happens to be a little lower, hence −0.0096 there.)
+
+## 2026-10-04 — group A, first three runs; a launch bug of mine
+
+a01 passed stop rule 1 ($0.399, all files, meters agree), so I launched the
+rest "two at a time" with `for pair in "a02 a03" "a04 a05"; do for r in
+$pair; ...`. The shell here is zsh, which does not word-split an unquoted
+`$pair`, so each "pair" started **one** run whose id was the whole string:
+`runs/a02 a03` and `runs/a04 a05`. Found it when `summarize_runs.py`
+printed run names with spaces and the per-run cost check could not find
+`runs/a02/`. Nothing was lost or double-billed — two runs instead of four.
+Renamed the directories to `a02` and `a03` (their `run_meta.json` still
+says `"run_id": "a02 a03"` / `"a04 a05"`; logs left as written) and
+launched a04 and a05 as two explicit commands. Each run's console output is
+kept as `console.txt`.
