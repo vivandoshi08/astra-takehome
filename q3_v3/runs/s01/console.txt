@@ -1,0 +1,11 @@
+task=ellipses client=openrouter:anthropic/claude-sonnet-5 cap=500,000
+baselines: {'mean': -0.0454, 'pca (k=6)': -0.0173, 'vae (k=6)': -0.0051}
+  seed     score -0.0272
+  gen   0  best -0.0272  valid 0/4  tokens 13,692
+
+[interrupted]
+
+best score: -0.0272
+budget    : 7 calls, 9,625 in + 14,336 out = 23,961 tokens (5% of cap)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q3_v3/runs/s01/best.py
+held-out  : -0.0275
