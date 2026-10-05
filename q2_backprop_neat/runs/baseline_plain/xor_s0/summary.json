@@ -1,0 +1,32 @@
+{
+  "args": {
+    "dataset": "xor",
+    "steps": 0,
+    "refine_fraction": 1.0,
+    "budget": 30000,
+    "generations": 30,
+    "config": "/Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/neat_config.ini",
+    "run_id": "baseline_plain/xor_s0",
+    "seed": 0,
+    "quiet": true,
+    "overwrite": true
+  },
+  "git_commit": "11e5994",
+  "seconds": 0.2,
+  "generations_planned": 30,
+  "generations_run": 30,
+  "budget": "0/30,000 gradient steps over 0 refinements",
+  "budget_spent": 0,
+  "budget_limit": 30000,
+  "budget_refinements": 0,
+  "within_budget": true,
+  "budget_error": null,
+  "heldout_majority_class": 0.5133333333333333,
+  "champion_fitness": 0.7371428571428571,
+  "champion_refined": false,
+  "train_acc": 0.7371428571428571,
+  "heldout_acc": 0.7133333333333334,
+  "nodes": 2,
+  "conns": 4,
+  "max_abs_param": 3.0335794515244316
+}
