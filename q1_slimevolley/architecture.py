@@ -23,10 +23,10 @@ INPUT_NAMES = "x y vx vy bx by bvx bvy ox oy ovx ovy bx-x by-y".split()
 OUTPUT_NAMES = {0: "forward", 1: "backward", 2: "jump"}
 
 
-def effective(genome) -> tuple[set, list]:
+def effective(genome, outputs: dict) -> tuple[set, list]:
     """Nodes/connections on some input -> output path (enabled connections only)."""
     en = [c for c in genome.connections.values() if c.enabled]
-    reach_out = set(OUTPUT_NAMES)
+    reach_out = set(outputs)
     changed = True
     while changed:  # walk backwards from outputs
         changed = False
@@ -43,17 +43,18 @@ def describe(run: Path) -> str:
     genome = pickle.loads((run / "champion.pkl").read_bytes())
     n_in = config.genome_config.num_inputs
     names = {-1 - i: n for i, n in enumerate(INPUT_NAMES[:n_in])}
-    name = lambda k: names.get(k, OUTPUT_NAMES.get(k, f"h{k}"))  # noqa: E731
+    outputs = OUTPUT_NAMES if config.genome_config.num_outputs == 3 else {0: "direction", 1: "jump"}
+    hidden = [k for k in genome.nodes if k not in outputs]
+    name = lambda k: names.get(k, outputs.get(k, f"h{k}"))  # noqa: E731
     enabled = [c for c in genome.connections.values() if c.enabled]
-    hidden = [k for k in genome.nodes if k not in OUTPUT_NAMES]
-    eff_nodes, eff_conns = effective(genome)
+    eff_nodes, eff_conns = effective(genome, outputs)
     used_inputs = sorted({c.key[0] for c in eff_conns if c.key[0] < 0}, reverse=True)
     acts = collections.Counter(genome.nodes[k].activation for k in genome.nodes)
     lines = [
         f"# Champion architecture: `{run.name}` (genome {genome.key})", "",
         "| | count |", "|---|---|",
         f"| inputs | {n_in} |",
-        f"| nodes (stored) | {len(genome.nodes)} = {len(OUTPUT_NAMES)} output + {len(hidden)} hidden |",
+        f"| nodes (stored) | {len(genome.nodes)} = {len(outputs)} output + {len(hidden)} hidden |",
         f"| nodes (effective, on an input->output path) | {len(eff_nodes)} |",
         f"| enabled connections (stored) | {len(enabled)} ({len(genome.connections) - len(enabled)} disabled) |",
         f"| enabled connections (effective) | {len(eff_conns)} |",
@@ -67,7 +68,7 @@ def describe(run: Path) -> str:
         "| node | bias | inputs (weight), strongest first | on a path to an output? |",
         "|---|---|---|---|",
     ]
-    for k in list(OUTPUT_NAMES) + sorted(hidden):
+    for k in list(outputs) + sorted(hidden):
         ins = sorted(((c.key[0], c.weight) for c in enabled if c.key[1] == k), key=lambda t: -abs(t[1]))
         lines.append(f"| {name(k)} | {genome.nodes[k].bias:+.2f} | "
                      + (", ".join(f"{name(i)} ({w:+.2f})" for i, w in ins) or "—")

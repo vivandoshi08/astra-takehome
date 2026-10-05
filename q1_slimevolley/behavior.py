@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import slimevolley as sv  # noqa: E402
-from episode import _CONTACTS, action_from_outputs, net_inputs  # noqa: E402
+from episode import _CONTACTS, net_inputs, policy_action  # noqa: E402
 from evaluate import heldout_seeds  # noqa: E402
 from evolve import load_config, make_net  # noqa: E402
 
@@ -46,7 +46,7 @@ def play(make_net_fn, seeds) -> dict:
             before = _CONTACTS[1], _CONTACTS[-1]
             ball_x = env.game.ball.x
             me_x = env.game.agent_right.x
-            obs, reward, done, _ = env.step(action_from_outputs(net.activate(net_inputs(net, obs))))
+            obs, reward, done, _ = env.step(policy_action(net, net.activate(net_inputs(net, obs))))
             if _CONTACTS[1] > before[0]:
                 last_touch = "us"
             elif _CONTACTS[-1] > before[1]:
