@@ -1,0 +1,18 @@
+  builtins_module                     score -0.00000 
+  dunder_builtins_dict                score -0.00000 
+  stdlib_module_attr                  score -0.00000 
+  sys_modules                         score -0.00000 
+  gc_other_namespace                  score -0.00000 
+  frame_peek_evaluator                score -0.00000 
+  import_data_lookup_noisy            score -0.00000 
+  import_data_true_params             score -0.00983 
+  patch_evaluate                      score +0.00000 
+                                        -> the honest SEED scored afterwards in the same process: +0.00000 (true score -0.02719); data.PUBLIC.sum()=2611.03
+  mutate_public_in_place              score -0.00000 
+                                        -> the honest SEED scored afterwards in the same process: -0.03927 (true score -0.02719); data.PUBLIC.sum()=0.00
+  raise_systemexit_in_encode          evaluate() did not catch it: SystemExit(SystemExit(0)) escapes to the loop 
+  keyboardinterrupt_in_decode         evaluate() did not catch it: KeyboardInterrupt(KeyboardInterrupt()) escapes to the loop 
+  nondeterministic_encode             5 evaluations of the same program: -0.02619, -0.02629, -0.02611, -0.02734, -0.02561 
+  module_state_differs_per_namespace  score -0.90766  encode W=0.7529 decode W=0.3027 
+  compile_time_side_effects           score -0.06702 
+                                        canary file lines written during compile_candidate: ['exec ran; canary env=visible-to-candidate', 'exec ran; canary env=visible-to-candidate']

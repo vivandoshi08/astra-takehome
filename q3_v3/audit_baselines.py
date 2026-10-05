@@ -4,10 +4,14 @@
 
 The images are clean renders plus N(0, 0.1^2) pixel noise, and the score is
 MSE against the *noisy* image. Reconstructing the true clean ellipse exactly
-therefore scores about -SIGMA^2 = -0.0100. That is the best any model can do
-on images it has not memorised: six numbers cannot carry 256 independent
-noise values. A score above it on PUBLIC means the model has memorised
-PUBLIC's noise, and HELD_OUT (never trained on) shows it.
+therefore scores about -SIGMA^2 = -0.0100. A per-image least-squares fit of
+the 6 parameters does slightly better, -SIGMA^2 (1 - 6/256) = -0.0096,
+because it also absorbs the noise along the 6 directions it can move in.
+That is the honest optimum for a smooth decoder; a smooth model that scores
+well above it on PUBLIC has memorised PUBLIC's noise, and HELD_OUT (never
+trained on) shows it. (Float64 latents can carry more than 6 numbers' worth
+of information if bit-packed — see AUDIT.md A4 — but the VAE is a smooth
+tanh network and does not.)
 """
 
 from __future__ import annotations

@@ -1,0 +1,25 @@
+prompt pieces (chars):
+  header (instructions)         1,416
+  3 digit grids                   913
+  gen-0 prompt (seed only)      3,461
+  gen>=1 prompt (refined, moments, seed)  7,693
+  late prompt (3 x ~3,364-char programs) 12,689
+  programs: seed 940, moments 1,916, refined 2,242 chars
+
+input tokens per call (text at 3.5-4 chars/tok; digit grids at 2-3 chars/tok):
+  gen 0      941 -   1184   (mock client reports len//4 = 865)
+  gen>=1    1999 -   2394   (mock client reports len//4 = 1923)
+  late      3248 -   3821   (mock client reports len//4 = 3172)
+
+per-run estimate, 48 calls (4 in gen 0 with the short prompt, 44 with a full top-3):
+  a REFINED-size answer is 2,268 chars ~ 567-648 tokens
+  terse (600 tok/answer)             in-low : in    92K + out   29K =  121K tok, $0.24 (output = 61% of $)
+  terse (600 tok/answer)             in-high: in   173K + out   29K =  202K tok, $0.32 (output = 45% of $)
+  typical (1,000 tok/answer)         in-low : in    92K + out   48K =  140K tok, $0.33 (output = 72% of $)
+  typical (1,000 tok/answer)         in-high: in   173K + out   48K =  221K tok, $0.41 (output = 58% of $)
+  verbose (1,500)                    in-low : in    92K + out   72K =  164K tok, $0.45 (output = 80% of $)
+  verbose (1,500)                    in-high: in   173K + out   72K =  245K tok, $0.53 (output = 68% of $)
+  every answer hits MAX_TOKENS (2048) in-low : in    92K + out   98K =  190K tok, $0.58 (output = 84% of $)
+  every answer hits MAX_TOKENS (2048) in-high: in   173K + out   98K =  271K tok, $0.66 (output = 74% of $)
+
+README claim: ~200K tokens, ~$0.40 per 12-gen run. At $1/$5 per Mtok that pair implies in+out=200K and in+5*out=400K -> in 150K, out 50K (~1,040 out tok/answer; ~3,100 in tok/call).

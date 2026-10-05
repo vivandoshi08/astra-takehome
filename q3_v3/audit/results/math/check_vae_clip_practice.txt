@@ -1,0 +1,4 @@
+beta=0.01   : pre-clip logvar [   -7.53,    -5.64]  fraction beyond +-10: 0.000   PUBLIC -0.00505  HELD_OUT -0.03462
+beta=0.001  : pre-clip logvar [  -11.27,    -6.60]  fraction beyond +-10: 0.057   PUBLIC -0.00473  HELD_OUT -0.04539
+beta=0.0001 : pre-clip logvar [  -14.25,    -6.81]  fraction beyond +-10: 0.478   PUBLIC -0.00463  HELD_OUT -0.04998
+beta=0.0    : pre-clip logvar [  -14.94,    -6.82]  fraction beyond +-10: 0.595   PUBLIC -0.00462  HELD_OUT -0.05048

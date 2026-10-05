@@ -1,0 +1,4 @@
+  infinite loop in encode: STILL RUNNING after 2.0s (killed by our alarm; the loop has no timeout)
+  infinite loop at module level (compile time): STILL RUNNING after 2.0s (killed by our alarm; the loop has no timeout)
+  infinite loop wrapped in try/except Exception: STILL RUNNING after 2.0s (killed by our alarm; the loop has no timeout)
+  Exception-subclass alarm inside encode -> evaluate returns -inf after 1.1s (usable as a fix, but defeatable by a candidate's own `except Exception`)

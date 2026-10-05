@@ -1,0 +1,26 @@
+  ```python (canonical)                starts 'import math'                   compiles=yes -> ok
+  prose + ```python + prose            starts 'import math'                   compiles=yes -> ok
+  ```python + trailing spaces          starts 'import math'                   compiles=yes -> ok
+  ```python\r\n (CRLF)                 starts 'import math'                   compiles=yes -> ok
+  ```Python                            starts 'Python'                        compiles=no  -> DROPPED
+  ```py                                starts 'py'                            compiles=no  -> DROPPED
+  ```python3                           starts '3'                             compiles=yes -> ok
+  ```Python3                           starts 'Python3'                       compiles=no  -> DROPPED
+  ``` python (space before tag)        starts 'python'                        compiles=no  -> DROPPED
+  ``` (untagged)                       starts 'import math'                   compiles=yes -> ok
+  ~~~python (tilde fence)              no match                               compiles=-   -> DROPPED
+  ````python (4-backtick fence)        starts '`python'                       compiles=no  -> DROPPED
+  no fence at all                      no match                               compiles=-   -> DROPPED
+  unclosed fence (truncated)           no match                               compiles=-   -> DROPPED
+  truncated mid-program                no match                               compiles=-   -> DROPPED
+  two blocks: encode | decode          starts 'import math'                   compiles=no  -> DROPPED
+  usage snippet first, then prog       starts 'z = encode(img)'               compiles=no  -> DROPPED
+  draft block, then fixed block        starts 'def encode(img):'              compiles=yes -> WRONG PROGRAM (-0.0272)
+  ```text analysis block first         starts 'text'                          compiles=no  -> DROPPED
+  inline ``` in prose before code      starts 'block as asked.'               compiles=no  -> DROPPED
+  ``` inside a string in the code      starts "NOTE = 'fence"                 compiles=no  -> DROPPED
+  ```python, no newline after tag      starts 'import math'                   compiles=yes -> ok
+  fence inside a list item (indented)  starts 'import math'                   compiles=no  -> DROPPED
+
+  regex: '```(?:python)?\\s*(.*?)```'
+  15/23 formats drop a correct program entirely

@@ -1,0 +1,22 @@
+========================================================================
+(1)+(2) per-image least-squares fit of data.render
+========================================================================
+  PUBLIC  : clean truth -0.009833 | legit LM fit (evaluate) -0.009597 [15s] | oracle-init LM fit -0.009608 | clean + 6*sigma^2/256 = -0.009599
+            legit vs oracle optimum on first 64: worse by >1e-3 SSE in 2 / 64 images (max excess SSE 0.0056)
+  HELD_OUT: clean truth -0.009933 | legit LM fit (evaluate) -0.009678 [31s] | oracle-init LM fit -0.009692 | clean + 6*sigma^2/256 = -0.009699
+            legit vs oracle optimum on first 64: worse by >1e-3 SSE in 1 / 64 images (max excess SSE 0.0088)
+  expected value sigma^2 (1 - 6/256) = 0.009766
+
+========================================================================
+(3) float64 bit-packing: params (6 x 16 bits) + 222 residual-sign bits
+========================================================================
+  example latent: [2906638612745805, 3491042029844515, 3821689161230941, 2211344323222159, 6667812334831777, 4173876106225916]  (max < 2**53: True)
+  PUBLIC  : bit-packed score -0.004324  (predicted ~-0.004299; clean truth -0.009833; VAE PUBLIC -0.005051 / HELD_OUT -0.034619)
+  HELD_OUT: bit-packed score -0.004381  (predicted ~-0.004335; clean truth -0.009933; VAE PUBLIC -0.005051 / HELD_OUT -0.034619)
+
+========================================================================
+Graded thresholds vs the honest optimum
+========================================================================
+  T3    -0.0140: slack below legit LM fit 0.00440 (45.9% worse MSE allowed), below clean truth 0.00417
+  Bonus -0.0105: slack below legit LM fit 0.00090 (9.4% worse MSE allowed), below clean truth 0.00067
+  PCA -0.0173, SEED -0.0272, mean -0.0454

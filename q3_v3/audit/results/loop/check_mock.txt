@@ -1,0 +1,14 @@
+=== A. jitter: body.replace('> 0.3','> 0.4').replace('0.8]','0.7]')
+  CANNED[0]: '> 0.3' x0, '0.8]' x0, other '0.8' x0 | changed=False | score -0.0670 -> -0.0670
+  CANNED[1]: '> 0.3' x0, '0.8]' x1, other '0.8' x0 | changed=True | score -0.0599 -> -0.0565
+  CANNED[2]: '> 0.3' x1, '0.8]' x2, other '0.8' x0 | changed=True | score -0.0272 -> -0.0277
+  CANNED[3]: '> 0.3' x1, '0.8]' x2, other '0.8' x1 | changed=True | score -0.0162 -> -0.0170
+
+  seed score -0.0272; CANNED[2] score -0.0272 (CANNED[2] is the seed program re-formatted)
+
+=== B. 20,000 mock responses: how many fail extract/compile/evaluate?
+  distinct texts: 7; outcomes: {'valid': 20000}
+  mock output_tokens range: 27-207 (real answers: ~550-2048; see check_cost.py)
+
+=== C. is the mock prompt-dependent / seed-dependent?
+  same default seed, different prompts -> identical answers: True

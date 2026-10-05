@@ -1,0 +1,49 @@
+
+========================================================================
+1. Averaging is per pixel over all images (== numpy MSE)
+========================================================================
+  evaluate(SEED)            = -0.02719020
+  -mean((recon - PUBLIC)^2) = -0.02719020
+  SEED on HELD_OUT          = -0.02745290
+  all-zero decoder = -0.067022  vs -mean(PUBLIC^2) = -0.067022
+
+========================================================================
+2. Inputs are copied: encode/decode mutating their arguments cannot help
+========================================================================
+  encode zeroes its img list, decode returns zeros: -0.067022 (same as all-zero decoder => target not affected)
+
+========================================================================
+3. Validation paths that return -inf (correct)
+========================================================================
+  encode raises: returned -inf
+  5 latents: returned -inf
+  7 latents: returned -inf
+  nan latent: returned -inf
+  inf latent: returned -inf
+  latent not iterable: returned -inf
+  decode returns None: returned -inf
+  decode 255 values: returned -inf
+  decode nan pixel: returned -inf
+  decode inf pixel: returned -inf
+  huge-but-finite pixel 1e200 (err^2 overflows to inf, CLIP caps it at 1e6):
+  decode 1e200: returned -1000000.0
+
+========================================================================
+4. Paths that RAISE out of evaluate (loop.py:155 calls evaluate unguarded)
+========================================================================
+  encode returns a Python int too big for float, [10**400]+[0]*5: RAISED OverflowError: int too large to convert to float
+  decode returns [10**400]*256: RAISED OverflowError: int too large to convert to float
+  latent element whose __float__ raises RuntimeError: RAISED RuntimeError: boom
+  empty image set: RAISED ZeroDivisionError: float division by zero
+  candidate calls sys.exit(): RAISED SystemExit: 3
+  compiled LLM-style candidate returning 10**400: RAISED OverflowError: int too large to convert to float
+
+========================================================================
+5. Side channels around the 6-number latent (compile_candidate isolated=True)
+========================================================================
+  stash img on the shared `math` module: score -0.000000 (HELD_OUT -0.000000)
+  decode counts its own calls + `import data`: score -0.000000  (no information through z at all)
+  lookup table (encode finds the index, decode returns PUBLIC[index]): -0.000000
+  decode overwrites data.PUBLIC in place: its score -0.000546; PUBLIC corrupted afterwards: True; SEED re-scored after it: -0.039269 (true -0.027190). ellipses.PUBLIC is data.PUBLIC: True
+  non-deterministic encode accepted: -0.06702184284254264 (no determinism check)
+  PUBLIC restored: True
