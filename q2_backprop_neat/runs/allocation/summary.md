@@ -1,25 +1,26 @@
 # Grid `allocation`
 
-Generated 2026-10-04T20:06:32-07:00 by `experiments/summarize.py` from `/Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/runs/allocation`.
+Generated 2026-10-04T22:07:49-07:00 by `experiments/summarize.py` from `/Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q2-audit-fixes/q2_backprop_neat/runs/allocation`.
 300 cells = 10 arms × 3 datasets × 10 seeds (seeds [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).
 
-**Outcomes:** ok 293 · invalid-budget 0 · crashed 7 · timeout 0 · missing 0 · args-mismatch 0
+**Outcomes:** ok 295 · invalid-budget 0 · crashed 5 · timeout 0 · missing 0 · args-mismatch 0
 
 ## Warnings
 
-- **cells come from 2 different git commits: 34dc34c (207 cells), dfa1495 (86 cells)**
+- **cells come from 3 different git commits: 34dc34c (207 cells), dfa1495 (86 cells), 6b4440e (7 cells)**
+- **cells ran 2 different versions of the code: 7 cells (e.g. allocation/B_lamarckian/spiral_s4) differ from the 293-cell majority in: main.py, neat_config_lowmut.ini, neat_config_noreplace.ini, neat_config_sine.ini, neat_config_topo.ini, network.py, test_gradients.py, test_main.py, test_smallnet.py**
+- **arm 'B_lamarckian': cells recorded 2 different argument sets (differing: config); its cells are not one configuration**
+- **arm 'D_lamarckian': cells recorded 2 different argument sets (differing: config); its cells are not one configuration**
 
 ## Cells not counted in the statistics
 
 | cell | outcome | reason |
 |---|---|---|
-| allocation/B_lamarckian/spiral_s4 | crashed | exit 1: RuntimeError: Configuration conflict: population size 100 is less than num_species * min_species_size 102 (51 * 2). Cannot satisfy per-species minima. |
-| allocation/D_lamarckian/xor_s1 | crashed | exit 1: RuntimeError: Configuration conflict: population size 100 is less than num_species * min_species_size 102 (51 * 2). Cannot satisfy per-species minima. |
-| allocation/D_lamarckian/spiral_s0 | crashed | exit 1: RuntimeError: Configuration conflict: population size 100 is less than num_species * min_species_size 102 (51 * 2). Cannot satisfy per-species minima. |
-| allocation/D_lamarckian/spiral_s6 | crashed | exit 1: RuntimeError: Configuration conflict: population size 100 is less than num_species * min_species_size 102 (51 * 2). Cannot satisfy per-species minima. |
-| allocation/D_lamarckian/spiral_s9 | crashed | exit 1: RuntimeError: Configuration conflict: population size 100 is less than num_species * min_species_size 104 (52 * 2). Cannot satisfy per-species minima. |
-| allocation/D_lamarckian/spiral3_s0 | crashed | exit 1: RuntimeError: Configuration conflict: population size 100 is less than num_species * min_species_size 102 (51 * 2). Cannot satisfy per-species minima. |
-| allocation/D_lamarckian/spiral3_s1 | crashed | exit 1: RuntimeError: Configuration conflict: population size 100 is less than num_species * min_species_size 102 (51 * 2). Cannot satisfy per-species minima. |
+| allocation/B_lamarckian/spiral_s4 | crashed | exit 5: wrote /Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q2-audit-fixes/q2_backprop_neat/runs/allocation/B_lamarckian/spiral_s4/ |
+| allocation/D_lamarckian/xor_s1 | crashed | exit 5: wrote /Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q2-audit-fixes/q2_backprop_neat/runs/allocation/D_lamarckian/xor_s1/ |
+| allocation/D_lamarckian/spiral_s0 | crashed | exit 5: wrote /Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q2-audit-fixes/q2_backprop_neat/runs/allocation/D_lamarckian/spiral_s0/ |
+| allocation/D_lamarckian/spiral_s6 | crashed | exit 5: wrote /Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q2-audit-fixes/q2_backprop_neat/runs/allocation/D_lamarckian/spiral_s6/ |
+| allocation/D_lamarckian/spiral_s9 | crashed | exit 5: wrote /Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q2-audit-fixes/q2_backprop_neat/runs/allocation/D_lamarckian/spiral_s9/ |
 
 ## Results by dataset and arm
 
@@ -49,11 +50,11 @@ Held-out accuracy is the reported number and is never used to choose. Statistics
 | spiral | E_baldwinian | 10/10 | 0 | 0 | 0.851 ± 0.037 | 0.800 | 0.920 | 0.847 ± 0.048 | 0.869 | 8.4 | 30,000 |  |
 | spiral3 | A_lamarckian | 10/10 | 0 | 0 | 0.825 ± 0.055 | 0.773 | 0.953 | 0.854 ± 0.067 | 0.832 | 10.2 | 30,000 |  |
 | spiral3 | A_baldwinian | 10/10 | 0 | 0 | 0.677 ± 0.061 | 0.600 | 0.753 | 0.747 ± 0.039 | 0.723 | 6.4 | 30,000 |  |
-| spiral3 | B_lamarckian | 10/10 | 0 | 0 | 0.809 ± 0.061 | 0.713 | 0.920 | 0.866 ± 0.063 | 0.831 | 10.0 | 30,000 | **yes** |
+| spiral3 | B_lamarckian | 10/10 | 0 | 0 | 0.809 ± 0.061 | 0.713 | 0.920 | 0.866 ± 0.063 | 0.831 | 10.0 | 30,000 |  |
 | spiral3 | B_baldwinian | 10/10 | 0 | 0 | 0.740 ± 0.060 | 0.667 | 0.847 | 0.797 ± 0.054 | 0.769 | 8.4 | 30,000 |  |
 | spiral3 | C_lamarckian | 10/10 | 0 | 0 | 0.736 ± 0.024 | 0.707 | 0.787 | 0.767 ± 0.033 | 0.751 | 6.1 | 30,000 |  |
 | spiral3 | C_baldwinian | 10/10 | 0 | 0 | 0.695 ± 0.033 | 0.640 | 0.740 | 0.740 ± 0.031 | 0.705 | 5.3 | 30,000 |  |
-| spiral3 | D_lamarckian | 8/10 | 0 | 2 | 0.833 ± 0.040 | 0.787 | 0.880 | 0.889 ± 0.048 | 0.855 | 11.8 | 29,520 |  |
+| spiral3 | D_lamarckian | 10/10 | 0 | 0 | 0.834 ± 0.040 | 0.787 | 0.880 | 0.893 ± 0.044 | 0.862 | 11.9 | 29,520 | **yes** |
 | spiral3 | D_baldwinian | 10/10 | 0 | 0 | 0.683 ± 0.027 | 0.660 | 0.733 | 0.730 ± 0.011 | 0.685 | 5.4 | 29,520 |  |
 | spiral3 | E_lamarckian | 10/10 | 0 | 0 | 0.793 ± 0.045 | 0.727 | 0.847 | 0.823 ± 0.033 | 0.802 | 12.5 | 30,000 |  |
 | spiral3 | E_baldwinian | 10/10 | 0 | 0 | 0.673 ± 0.064 | 0.600 | 0.760 | 0.757 ± 0.033 | 0.722 | 4.6 | 30,000 |  |
@@ -66,7 +67,7 @@ Chosen by the highest mean validation accuracy (`val_acc`) among arms whose cell
 |---|---|--:|--:|---|
 | xor | — | — | — | n/a — tie on val mean 0.9986: A_lamarckian, E_lamarckian; not eligible (not all cells ok): D_lamarckian (9/10 ok) |
 | spiral | A_lamarckian | 0.929 | 0.903 ± 0.069 | not eligible (not all cells ok): B_lamarckian (9/10 ok), D_lamarckian (7/10 ok) |
-| spiral3 | B_lamarckian | 0.866 | 0.809 ± 0.061 | not eligible (not all cells ok): D_lamarckian (8/10 ok) |
+| spiral3 | D_lamarckian | 0.893 | 0.834 ± 0.040 |  |
 
 ## Other numeric summary fields (mean over ok cells)
 
@@ -98,7 +99,7 @@ Chosen by the highest mean validation accuracy (`val_acc`) among arms whose cell
 | spiral3 | B_baldwinian | 2.698 | 30 | 30 | 1,000 | 30,000 | 300 | 300 | 300 | 280 | 70 | 0.5667 | 17.7 | 0.7621 | 0.7621 | 4.8 | 15.13 | 0.7467 | 8.5 |
 | spiral3 | C_lamarckian | 1.878 | 6 | 6 | 5,000 | 30,000 | 600 | 600 | 600 | 280 | 70 | 0.5667 | 4.4 | 0.7468 | 0.7468 | 3.4 | 19.42 | 0.7387 | 6.4 |
 | spiral3 | C_baldwinian | 1.525 | 6 | 6 | 5,000 | 30,000 | 600 | 600 | 600 | 280 | 70 | 0.5667 | 4.1 | 0.6961 | 0.6961 | 2.7 | 5.967 | 0.702 | 5.6 |
-| spiral3 | D_lamarckian | 3.879 | 30 | 30 | 984 | 30,000 | 5,790 | 5,790 | 3,000 | 280 | 70 | 0.5667 | 24.12 | 0.8464 | 0.8464 | 5.5 | 26.22 | 0.8367 | 12.5 |
+| spiral3 | D_lamarckian | 3.995 | 30 | 30 | 984 | 30,000 | 5,790 | 5,790 | 3,000 | 280 | 70 | 0.5667 | 24.4 | 0.8543 | 0.8543 | 5.7 | 25.65 | 0.8373 | 12.5 |
 | spiral3 | D_baldwinian | 2.382 | 30 | 30 | 984 | 30,000 | 5,790 | 5,790 | 3,000 | 280 | 70 | 0.5667 | 14 | 0.6743 | 0.6743 | 3.7 | 12.02 | 0.6873 | 6.2 |
 | spiral3 | E_lamarckian | 4.974 | 60 | 60 | 500 | 30,000 | 6,000 | 6,000 | 6,000 | 280 | 70 | 0.5667 | 43.8 | 0.7964 | 0.7964 | 7.7 | 10.37 | 0.8067 | 13.7 |
 | spiral3 | E_baldwinian | 3.042 | 60 | 60 | 500 | 30,000 | 6,000 | 6,000 | 6,000 | 280 | 70 | 0.5667 | 28.4 | 0.7129 | 0.7129 | 2.5 | 3.037 | 0.6993 | 4.9 |

@@ -41,7 +41,7 @@ assumptions. Reproduce:
   optimiser update. No line search, second-order steps, or finite-difference
   gradients inside runs. Charge the steps actually taken; forward passes
   (fitness) are free, as in the shipped scaffold.
-- **Elites** are refined every generation they are evaluated, under both
+- **Elites** (correction after the post-merge audit: true under allocation A; under B and D an elite is refined only if selected again — DEVLOG #19, #20) are refined every generation they are evaluated, under both
   strategies, so both see the same evaluation protocol. That Lamarckian elites
   accumulate refinement this way is the first candidate mechanism to test.
 - **Champion selection** uses a validation split carved from the training

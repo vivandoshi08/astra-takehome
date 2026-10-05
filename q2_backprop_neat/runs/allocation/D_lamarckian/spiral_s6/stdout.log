@@ -1,16 +1,11 @@
 dataset spiral | pop 100 | halving base 2 eta 2 rounds 5 | 984 steps/gen -> 30 generations within 30,000 steps | strategy lamarckian | fit 280 / val 70
-Traceback (most recent call last):
-  File "/Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/main.py", line 493, in <module>
-    raise SystemExit(main())
-                     ^^^^^^
-  File "/Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/main.py", line 421, in main
-    pop.run(evaluator, generations)
-  File "/opt/anaconda3/envs/astra/lib/python3.11/site-packages/neat/population.py", line 128, in run
-    self.population = self.reproduction.reproduce(self.config, self.species,
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/anaconda3/envs/astra/lib/python3.11/site-packages/neat/reproduction.py", line 224, in reproduce
-    spawn_amounts = self._adjust_spawn_exact(spawn_amounts, pop_size, min_species_size)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/anaconda3/envs/astra/lib/python3.11/site-packages/neat/reproduction.py", line 109, in _adjust_spawn_exact
-    raise RuntimeError(
-RuntimeError: Configuration conflict: population size 100 is less than num_species * min_species_size 102 (51 * 2). Cannot satisfy per-species minima.
+
+STOPPED BY NEAT-PYTHON after 21 of 30 generations — this run is invalid: Configuration conflict: population size 100 is less than num_species * min_species_size 102 (51 * 2). Cannot satisfy per-species minima.
+
+dataset          : spiral
+generations      : 21
+budget           : 20,664/30,000 gradient steps over 4,053 refinements
+fit / val acc    : 0.911 / 0.886
+held-out accuracy: 0.853 (majority class 0.520)
+champion size    : 5 nodes, 10 enabled connections (generation 19)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q2-audit-fixes/q2_backprop_neat/runs/allocation/D_lamarckian/spiral_s6/

@@ -1,6 +1,6 @@
 # Q2 figures: decision boundaries and fitness curves
 
-Every figure here except `frontier.png` comes from one command, run from `q2_backprop_neat/`:
+Every figure here except `frontier.png` (from `experiments/score_frontier.py`) and `smallnet_sine_representative.png` (from `experiments/make_smallnet_figure.py`: median-seed Lamarckian champions with sine/Gaussian units and at most six connections) comes from one command, run from `q2_backprop_neat/`:
 
     python experiments/make_figures.py
 
