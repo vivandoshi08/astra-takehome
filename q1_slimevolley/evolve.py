@@ -452,6 +452,10 @@ def main() -> int:
         pool.join()
 
     recorder.write_outputs()
+    if recorder.snapshot_every and recorder.history and recorder.validated:
+        # Always snapshot the end state: the budget guard stops a run just short
+        # of a round number (e.g. 19.4M of 20M), which would skip the last one.
+        recorder.write_snapshot("end", len(recorder.history) - 1, total_steps(recorder.budget_log))
     run_info.update({"end_time": time.strftime("%Y-%m-%dT%H:%M:%S"),
                      "generations_completed": len(recorder.history),
                      "steps_used": total_steps(recorder.budget_log),

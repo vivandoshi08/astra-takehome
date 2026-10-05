@@ -32,6 +32,8 @@ from replay import record  # noqa: E402
 
 def snapshot_dirs(run: Path) -> list[tuple[str, Path]]:
     snaps = sorted((run / "snapshots").glob("*M"), key=lambda p: float(p.name[:-1]))
+    if (run / "snapshots" / "end").exists():
+        snaps.append(run / "snapshots" / "end")
     out = [(p.name, p) for p in snaps]
     if (run / "champion.pkl").exists():
         out.append(("final", run))
