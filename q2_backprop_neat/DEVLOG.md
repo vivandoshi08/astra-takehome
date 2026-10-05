@@ -34,7 +34,7 @@ any refinement code are in `AUDIT.md`; this file starts after that.
 - **Lamarckian runs fragment into many species; 4 of 9 Lamarckian
   successive-halving runs crashed.** neat-python raised `RuntimeError:
   population size 100 is less than num_species * min_species_size 102
-  (51 * 2)`. Max species per run in the allocation grid: Baldwinian 2–5 in
+  (51 * 2)`. Max species per run in the allocation grid (seeds 0–2; corrected below for 0–9): Baldwinian 2–5 in
   every arm; Lamarckian 6–23 (A), 16–49 (B), 23–41 (D, survivors). Lamarckian
   weights reach the +-30 bound (max |param| 30 in most runs; Baldwinian
   7–21). Likely chain: written-back refined weights drift apart between
@@ -69,3 +69,21 @@ any refinement code are in `AUDIT.md`; this file starts after that.
 - A parallel Q1 session committed onto `q2-backprop-neat` through the shared
   working directory (reflog shows its checkout and commit). Harmless here —
   the commit is in `origin/main` — but Q1 work now runs in its own worktree.
+
+## Corrections found while drafting the report
+
+The report-drafting agent cross-checked commit messages against result
+files; each was re-derived before being corrected:
+- Allocation seeds 0–2 were reported (commit `2026660`, addendum in
+  `PREDICTIONS_allocation.md`, and to the user) as "4 supported, 4
+  contradicted". `runs/allocation/predictions_scored_seeds0-2.md` has
+  3 supported, 3 contradicted, 4 inconclusive. A miscount.
+- Species counts: "Baldwinian 2–5" held for arms A/B/D at seeds 0–2 only.
+  At seeds 0–9 the maximum species per run is 1–7 for every Baldwinian arm;
+  Lamarckian A 5–46, B 16–49, C 1–15, D 11–50, E 3–14 (recomputed from
+  `n_species` in the allocation grid's fitness_history.csv).
+- Commit `ee3e292` says round 3's full-mutation damage "matches" round 2's
+  0.089: true for spiral (−0.091), not spiral3 (−0.063), and the two
+  statistics differ (a median over structurally unchanged clones vs a mean
+  over all mutants), so the comparison is loose.
+- AUDIT.md row 4 said an over-budget run exits 1; it exits 4 since DEVLOG #3.

@@ -75,3 +75,8 @@ spread = sqrt((sd_x² + sd_y²)/2) over seeds; "beyond spread" = |diff| > spread
 
 These run once. Whatever comes out is reported; at most one labelled
 follow-up if a result is ambiguous.
+
+**Correction (after the fact):** "Baldwinian 2–5" species was the range at
+seeds 0–2 for arms A/B/D. At seeds 0–9: Baldwinian 1–7 in every arm;
+Lamarckian A 5–46, B 16–49, C 1–15, D 11–50, E 3–14. The predictions above
+do not depend on the exact range.

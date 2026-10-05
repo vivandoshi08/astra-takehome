@@ -20,3 +20,11 @@ test; the size is reported next to the seeds-0–9 value):
 Expected held-out ranges for the chosen allocations (seeds 0–9 mean ± sd):
 Lamarckian A 0.903 ± 0.069 / 0.825 ± 0.055; Baldwinian B 0.869 ± 0.057 /
 0.740 ± 0.060 (spiral / spiral3). xor: all four arms 0.96–0.98.
+
+**Clarification (after the fact):** "chosen by validation accuracy" meant the
+mean validation accuracy over the spiral and spiral3 cells of seeds 0–9
+(xor is at its ceiling in every arm), among arms with no crashed cell:
+Lamarckian A 0.891 (C 0.794, E 0.861; B and D excluded for crashes);
+Baldwinian B 0.839 (A 0.782, C 0.792, D 0.818, E 0.802). It was computed in
+the session before this file was committed but not written down. Averaging
+over all three datasets gives the same choices (Lamarckian A, Baldwinian B).

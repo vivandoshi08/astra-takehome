@@ -66,3 +66,8 @@ and D and seed sd up to 0.10. Purpose: say which verdicts survive more
 seeds. The predictions and the verdict rule above are unchanged; verdicts
 are reported for seeds 0–2 (as pre-committed) and for 0–9, labelled.
 Seeds 10–12 replace 3–5 as the untouched confirmation set.
+
+**Correction (found while drafting the report):** seeds 0–2 scored 3
+supported, 3 contradicted, 4 inconclusive (`runs/allocation/predictions_scored_seeds0-2.md`),
+not "4 supported, 4 contradicted" as written above. A miscount; the verdict
+file is authoritative.
