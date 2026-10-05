@@ -31,7 +31,8 @@ for job in "${jobs[@]}"; do
   while [ "$(jobs -rp | wc -l)" -ge 3 ]; do sleep 5; done
   echo "start $id"
   # shellcheck disable=SC2086
-  $PY evolve.py $COMMON $args --run-id "$id" > /dev/null 2>&1 &
+  mkdir -p "runs/$id"
+  $PY evolve.py $COMMON $args --run-id "$id" > /dev/null 2> "runs/$id/stderr.log" &
 done
 wait
 echo "all done"

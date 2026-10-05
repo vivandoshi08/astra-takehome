@@ -58,6 +58,7 @@ import statistics
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 
 import neat
@@ -438,6 +439,7 @@ def main() -> int:
     pop.add_reporter(recorder)
 
     stopped_early = False
+    error = None
 
     ctx = mp.get_context("spawn")
     pool = ctx.Pool(processes=args.workers, initializer=_init_worker,
@@ -486,6 +488,10 @@ def main() -> int:
     except KeyboardInterrupt:
         print("  interrupted — writing what we have", flush=True)
         stopped_early = True
+    except Exception:  # noqa: BLE001 — record any crash in the run dir, then exit non-zero
+        error = traceback.format_exc()
+        print(f"  [error] run crashed — writing what we have\n{error}", flush=True)
+        stopped_early = True
     finally:
         pool.close()
         pool.join()
@@ -498,7 +504,8 @@ def main() -> int:
     run_info.update({"end_time": time.strftime("%Y-%m-%dT%H:%M:%S"),
                      "generations_completed": len(recorder.history),
                      "steps_used": total_steps(recorder.budget_log),
-                     "stopped_early": stopped_early, "champion": recorder.champion_meta})
+                     "stopped_early": stopped_early, "champion": recorder.champion_meta,
+                     "error": error})
     (run_dir / "run_args.json").write_text(json.dumps(run_info, indent=2))
 
     print(f"\nwrote {run_dir}/")
@@ -510,6 +517,9 @@ def main() -> int:
               f"val mean {m['val_mean']:+.2f} over {args.val_episodes} games "
               f"(train fitness {m['train_fitness']:+.2f} — shaped/biased upward, don't report it)")
         print(f"  headline number: python evaluate.py --winner {run_dir / 'champion.pkl'}")
+    if error:
+        print("  RUN CRASHED — see [error] above and run_args.json 'error'", flush=True)
+        return 1
     return 0
 
 
