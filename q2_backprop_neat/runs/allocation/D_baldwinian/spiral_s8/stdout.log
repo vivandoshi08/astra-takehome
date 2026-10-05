@@ -1,0 +1,9 @@
+dataset spiral | pop 100 | halving base 2 eta 2 rounds 5 | 984 steps/gen -> 30 generations within 30,000 steps | strategy baldwinian | fit 280 / val 70
+
+dataset          : spiral
+generations      : 30
+budget           : 29,520/30,000 gradient steps over 5,790 refinements
+fit / val acc    : 0.925 / 0.886
+held-out accuracy: 0.887 (majority class 0.520)
+champion size    : 7 nodes, 10 enabled connections (generation 26)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/runs/allocation/D_baldwinian/spiral_s8/

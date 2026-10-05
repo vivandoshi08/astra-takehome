@@ -1,0 +1,9 @@
+dataset spiral3 | pop 100 | 5 steps/genome | refine 100% | 500 steps/gen -> 60 generations within 30,000 steps | strategy lamarckian | fit 280 / val 70
+
+dataset          : spiral3
+generations      : 60
+budget           : 30,000/30,000 gradient steps over 6,000 refinements
+fit / val acc    : 0.821 / 0.843
+held-out accuracy: 0.847 (majority class 0.567)
+champion size    : 5 nodes, 10 enabled connections (generation 51)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/runs/allocation/E_lamarckian/spiral3_s6/
