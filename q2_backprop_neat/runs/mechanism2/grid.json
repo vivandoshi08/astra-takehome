@@ -1,0 +1,45 @@
+{
+  "name": "mechanism2",
+  "datasets": [
+    "xor",
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "lam_lowmut",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--config": "neat_config_lowmut.ini",
+        "--strategy": "lamarckian"
+      }
+    },
+    {
+      "name": "bald_lowmut",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--config": "neat_config_lowmut.ini",
+        "--strategy": "baldwinian"
+      }
+    }
+  ]
+}

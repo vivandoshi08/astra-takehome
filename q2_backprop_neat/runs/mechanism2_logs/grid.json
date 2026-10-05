@@ -1,0 +1,39 @@
+{
+  "name": "mechanism2_logs",
+  "datasets": [
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "lamarckian_lowmut_log",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--config": "neat_config_lowmut.ini",
+        "--strategy": "lamarckian",
+        "--log-genomes": true
+      }
+    },
+    {
+      "name": "baldwinian_lowmut_log",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--config": "neat_config_lowmut.ini",
+        "--strategy": "baldwinian",
+        "--log-genomes": true
+      }
+    }
+  ]
+}
