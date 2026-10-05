@@ -125,3 +125,16 @@ five runs cost ~$0.50.
 searching encoder. Champion median ≤ −0.0100; all five better than all five
 C1 champions (rank test p ≈ 0.008). HELD_OUT within ±0.0003 of PUBLIC.
 5–20% of answers cut off (reasoning length varies). $0.05–0.15 per run.
+
+## Extension: +2 B runs (written before they run)
+
+B vs A came out at exact p = 0.032 with overlapping ranges: b05, whose
+encoders searched in only 6/48 answers, scored −0.0167, inside A's range.
+That is the borderline comparison, so it gets the extension. The planned
+3 + 3 runs no longer fit under the $9.50 guard (Sonnet's $0.49, and B runs
+cost $0.38–0.66 against $0.40 for A), so the user chose two more B runs
+(~$1.10; total ≈ $9.10).
+
+**Prediction (b06, b07):** both search in at least 30% of their answers
+and finish better than A's best (−0.0146); a b05-like run (hint mostly
+ignored) happens about one time in five, so probably neither.
