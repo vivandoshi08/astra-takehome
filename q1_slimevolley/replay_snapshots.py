@@ -51,6 +51,10 @@ def stats(genome, config, seeds) -> dict:
         "contacts": statistics.mean(e["contacts"] for e in eps),
         "returns": statistics.mean(e["returns"] for e in eps),
         **{k: sum(e[k] for e in eps) / total for k in ("act_fwd", "act_back", "act_jump", "act_both")},
+        "moved": statistics.mean(e["moved"] for e in eps),
+        "jumps": statistics.mean(e["jumps"] for e in eps),
+        "jump_hit": sum(e["jump_hits"] for e in eps) / max(1, sum(e["jumps"] for e in eps)),
+        "at_net": sum(e["zone_net"] for e in eps) / total,
     }
 
 
@@ -67,8 +71,8 @@ def main() -> int:
              f"Each row: genome scored on held-out seeds {seeds[0]}..{seeds[-1]} "
              f"(same seeds for every row). GIFs/sheets use the first {args.gifs}.", "",
              "| snapshot | which | gen | val mean | held-out mean [95% CI] | steps | timeouts "
-             "| contacts | returns | fwd | back | jump | both | replays |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "| contacts | returns | moved | jumps | jump→hit | at net | fwd | back | jump | both | replays |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for label, d in snapshot_dirs(args.run):
         meta = json.loads((d / "champion.json").read_text()) if (d / "champion.json").exists() else {}
         for which, pkl in (("champion", d / "champion.pkl"), ("gen best", d / "gen_best.pkl")):
@@ -91,13 +95,15 @@ def main() -> int:
             row = (f"| {label} | {which} | {m.get('generation', '')} | "
                    f"{m.get('val_mean', float('nan')):+.2f} | {st['mean']:+.2f} "
                    f"[{st['ci'][0]:+.2f}, {st['ci'][1]:+.2f}] | {st['steps']:.0f} | {st['timeouts']} | "
-                   f"{st['contacts']:.1f} | {st['returns']:.1f} | {st['act_fwd']:.2f} | "
+                   f"{st['contacts']:.1f} | {st['returns']:.1f} | {st['moved']:.0f} | {st['jumps']:.1f} | "
+                   f"{st['jump_hit']:.2f} | {st['at_net']:.2f} | {st['act_fwd']:.2f} | "
                    f"{st['act_back']:.2f} | {st['act_jump']:.2f} | {st['act_both']:.2f} | "
                    + " ".join(links) + " |")
             lines.append(row)
             print(row, flush=True)
-    lines += ["", "Reference (reward_check.py probe seeds): random 1.4 contacts / 0.1 returns; "
-              "hand-written tracker 13.6 / 3.0; built-in policy 45 / 24."]
+    lines += ["", "Reference (probe seeds 3,000,000+): random 1.4 contacts / 0.1 returns; hand-written "
+              "tracker 13.6 / 3.0, moves ~180/ep, 80% of jumps hit; built-in policy 45 / 24, moves ~555/ep, "
+              "52% of jumps hit; net camper moves ~10/ep, 21 jumps, 3% hit, 99% at net."]
     (args.run / "snapshots").mkdir(exist_ok=True)
     (args.run / "snapshots" / "progress.md").write_text("\n".join(lines) + "\n")
     print(f"\nwrote {args.run / 'snapshots' / 'progress.md'}")

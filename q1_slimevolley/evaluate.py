@@ -98,6 +98,10 @@ def main() -> int:
     s["returns_per_ep"] = statistics.mean(e["returns"] for e in episodes)
     s["opp_contacts_per_ep"] = statistics.mean(e["opp_contacts"] for e in episodes)
     s["out_sat"] = sum(e["out_sat"] for e in episodes) / (3 * total)
+    s["moved_per_ep"] = statistics.mean(e["moved"] for e in episodes)
+    s["jumps_per_ep"] = statistics.mean(e["jumps"] for e in episodes)
+    s["jump_hit_rate"] = sum(e["jump_hits"] for e in episodes) / max(1, sum(e["jumps"] for e in episodes))
+    s["zones"] = {k: sum(e[k] for e in episodes) / total for k in ("zone_net", "zone_mid", "zone_back")}
     s["score_counts"] = {str(v): scores.count(v) for v in sorted(set(scores))}
     print(f"{s['n']} held-out episodes (seeds {seeds[0]}..{seeds[-1]})")
     print(f"  mean {s['mean']:+.3f}  sd {s['sd']:.3f}")
@@ -108,6 +112,9 @@ def main() -> int:
     print(f"  episode length mean {s['mean_steps']:.0f}  timeouts (3000 steps) {s['timeouts']}")
     print(f"  per episode: contacts {s['contacts_per_ep']:.2f}  returns {s['returns_per_ep']:.2f}"
           f"  opponent contacts {s['opp_contacts_per_ep']:.2f}  | outputs saturated {s['out_sat']:.2f}")
+    print(f"  movement: {s['moved_per_ep']:.0f} units/ep, {s['jumps_per_ep']:.1f} jumps/ep, "
+          f"{s['jump_hit_rate']:.2f} of jumps hit the ball | time at net/mid/back "
+          + "/".join(f"{v:.2f}" for v in s["zones"].values()))
     print("  action fractions " + "  ".join(f"{k[4:]} {v:.2f}" for k, v in s["action_frac"].items()))
     if args.out:
         Path(args.out).write_text(json.dumps(

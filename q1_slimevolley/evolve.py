@@ -73,6 +73,7 @@ HISTORY_COLUMNS = [
     "best_raw", "mean_raw",
     "mean_nodes", "mean_conns", "mean_contacts", "mean_returns",
     "best_raw_contacts", "mean_cancel", "mean_sat", "gen_seconds",
+    "mean_moved", "mean_jumps", "jump_hit_rate", "zone_net_frac", "zone_back_frac",
 ]
 ACT_KEYS = ("act_fwd", "act_back", "act_jump", "act_idle", "act_both")
 
@@ -87,6 +88,10 @@ def episode_summary(eps: list[dict]) -> dict:
         "contacts": [e["contacts"] for e in eps],
         "opp_contacts": [e["opp_contacts"] for e in eps],
         "returns": [e["returns"] for e in eps],
+        "moved": [round(e["moved"], 2) for e in eps],
+        "jumps": [e["jumps"] for e in eps],
+        "jump_hits": [e["jump_hits"] for e in eps],
+        **{k: sum(e[k] for e in eps) / n_steps for k in ("zone_net", "zone_mid", "zone_back")},
     }
 
 
@@ -256,6 +261,11 @@ class RunRecorder(neat.reporting.BaseReporter):
             sum(e["act_both"] for e in all_eps) / all_steps,
             sum(e["out_sat"] for e in all_eps) / (3 * all_steps),
             round(now - self._last_time, 2),
+            statistics.mean(e["moved"] for e in all_eps),
+            statistics.mean(e["jumps"] for e in all_eps),
+            sum(e["jump_hits"] for e in all_eps) / max(1, sum(e["jumps"] for e in all_eps)),
+            sum(e["zone_net"] for e in all_eps) / all_steps,
+            sum(e["zone_back"] for e in all_eps) / all_steps,
         ])
         self._last_time = now
         self.write_outputs()
@@ -273,6 +283,9 @@ class RunRecorder(neat.reporting.BaseReporter):
         print(f"           contacts/ep {h['mean_contacts']:.2f} returns/ep {h['mean_returns']:.2f}"
               f" | cancel {h['mean_cancel']:.2f} saturated {h['mean_sat']:.2f}"
               f" | pop size {h['mean_nodes']:.1f}n/{h['mean_conns']:.1f}c | {h['gen_seconds']:.1f}s", flush=True)
+        print(f"           moved/ep {h['mean_moved']:.0f} jumps/ep {h['mean_jumps']:.1f}"
+              f" jump->hit {h['jump_hit_rate']:.2f} | at net {h['zone_net_frac']:.2f}"
+              f" back {h['zone_back_frac']:.2f}", flush=True)
         print(f"  [budget] {spent:,} / {self.limit:,} steps (+{gen_steps:,} this gen)", flush=True)
         # Stop at a generation boundary rather than letting a worker hit its cap
         # mid-generation, which throws the whole partial generation away.

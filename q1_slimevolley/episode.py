@@ -47,6 +47,12 @@ class EpisodeStats:
     contacts: int         # times the ball bounced off our agent
     opp_contacts: int     # times it bounced off the opponent
     returns: int          # our contacts after which the ball reached the opponent's side
+    moved: float          # total horizontal distance travelled (world units; court half ~21)
+    jumps: int            # takeoffs (ground -> air)
+    jump_hits: int        # jumps with a ball contact before landing (jump timing)
+    zone_net: int         # steps in the third of our half nearest the net
+    zone_mid: int         # ... middle third
+    zone_back: int        # ... back third
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -77,15 +83,31 @@ def run_episode(net, env) -> EpisodeStats:
     # RNN: its hidden state would carry over from the previous episode, so the
     # same env seed would not replay the same game. Reset it explicitly.
     env.policy.reset()
-    s = EpisodeStats(0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    s = EpisodeStats(0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0, 0, 0, 0)
     pending_return = False  # we touched the ball; has it crossed the net yet?
+    airborne = jump_hit = False
     done = False
     while not done:
         out = net.activate(net_inputs(net, obs))
         action = action_from_outputs(out)
         before = _CONTACTS[1], _CONTACTS[-1]
+        x_before = env.game.agent_right.x
         obs, reward, done, _ = env.step(action)
+        me = env.game.agent_right
         touched = _CONTACTS[1] - before[0]
+        s.moved += abs(me.x - x_before)
+        third = (me.x - _X_MIN) / (_X_MAX - _X_MIN)  # 0 at the net, 1 at the back wall
+        s.zone_net += third < 1 / 3
+        s.zone_mid += 1 / 3 <= third < 2 / 3
+        s.zone_back += third >= 2 / 3
+        up = me.y > slimevolley.REF_U
+        if up and not airborne:
+            s.jumps += 1
+            jump_hit = False
+        if up and touched and not jump_hit:
+            s.jump_hits += 1
+            jump_hit = True
+        airborne = up
         s.contacts += touched
         s.opp_contacts += _CONTACTS[-1] - before[1]
         if touched:
@@ -108,6 +130,11 @@ def run_episode(net, env) -> EpisodeStats:
     return s
 
 
+# Our agent's x range (world units): stopped by the fence and the back wall.
+_X_MIN = slimevolley.REF_WALL_WIDTH / 2 + 1.5
+_X_MAX = slimevolley.REF_W / 2 - 1.5
+
+
 def net_inputs(net, obs):
     """The network's input vector: the 12 observations, plus — for 14-input
     networks (configs/relative.ini) — ball position relative to our agent.
@@ -118,7 +145,7 @@ def net_inputs(net, obs):
     takes one, which a single mutation can find. The input count is read from
     the network, so 12-input champions keep working unchanged.
     """
-    if len(net.input_nodes) == 14:
+    if len(getattr(net, "input_nodes", ())) == 14:  # hand-written policies: plain obs
         return [*obs, obs[4] - obs[0], obs[5] - obs[1]]
     return obs
 
