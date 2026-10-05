@@ -1,6 +1,6 @@
 """Score the allocation predictions in PREDICTIONS_allocation.md.
 
-    python experiments/score_predictions.py [runs/allocation/results.csv]
+    python experiments/score_predictions.py [results.csv] [--seeds 0-2]
 
 Reads the grid's results.csv (ok cells only), prints a held-out table per
 dataset x strategy x arm, then each prediction's verdict by the rule fixed
@@ -21,10 +21,10 @@ STRATS = ("lamarckian", "baldwinian")
 SPIRALS = ("spiral", "spiral3")
 
 
-def load(path):
+def load(path, seeds=None):
     cells = {}
     for r in csv.DictReader(open(path)):
-        if r["outcome"] != "ok":
+        if r["outcome"] != "ok" or (seeds is not None and int(r["seed"]) not in seeds):
             continue
         arm, strat = r["arm"].split("_", 1)
         cells.setdefault((r["dataset"], strat, arm), []).append(float(r["heldout_acc"]))
@@ -48,10 +48,17 @@ def compare(cells, d, s, x, sign):
 
 
 def main() -> int:
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "runs/allocation/results.csv"
-    cells = load(path)
-    out = ["# Allocation predictions — scored", "",
-           f"From `{path.relative_to(HERE)}`; held-out accuracy, mean ± sd over seeds.", ""]
+    argv = sys.argv[1:]
+    seeds, label = None, "all seeds"
+    if "--seeds" in argv:
+        i = argv.index("--seeds")
+        lo, hi = map(int, argv[i + 1].split("-"))
+        seeds, label = set(range(lo, hi + 1)), f"seeds {lo}-{hi}"
+        del argv[i:i + 2]
+    path = Path(argv[0]) if argv else HERE / "runs/allocation/results.csv"
+    cells = load(path, seeds)
+    out = [f"# Allocation predictions — scored ({label})", "",
+           f"From `{path.relative_to(HERE)}`; held-out accuracy, mean ± sd over {label}.", ""]
 
     out += ["| dataset | strategy | " + " | ".join(ARMS) + " |",
             "|---|---|" + "--:|" * len(ARMS)]
@@ -92,7 +99,8 @@ def main() -> int:
     out += ["```", *lines, "```"]
     text = "\n".join(out) + "\n"
     print(text)
-    (path.parent / "predictions_scored.md").write_text(text)
+    suffix = "" if seeds is None else f"_seeds{min(seeds)}-{max(seeds)}"
+    (path.parent / f"predictions_scored{suffix}.md").write_text(text)
     return 0
 
 

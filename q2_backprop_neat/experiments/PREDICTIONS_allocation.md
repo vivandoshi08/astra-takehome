@@ -57,3 +57,12 @@ by that much; else inconclusive.
 Three seeds is little; "inconclusive" is an expected outcome and will be
 reported as such. Any allocation chosen after this grid is confirmed on
 seeds 3–5, which no decision has used.
+
+## Addendum (after seeing seeds 0–2): seeds 3–9 added
+
+Added after scoring seeds 0–2, which gave 4 supported, 4 contradicted, the
+rest inconclusive, with spiral and spiral3 disagreeing in direction for C
+and D and seed sd up to 0.10. Purpose: say which verdicts survive more
+seeds. The predictions and the verdict rule above are unchanged; verdicts
+are reported for seeds 0–2 (as pre-committed) and for 0–9, labelled.
+Seeds 10–12 replace 3–5 as the untouched confirmation set.
