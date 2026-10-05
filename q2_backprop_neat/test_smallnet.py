@@ -454,9 +454,10 @@ def test_budget(tmp):
               and s["within_budget"] and s["conns"] <= 6 and s["trainbest_conns"] <= 6
               and all(x["conns"] <= 6 for x in rows))
         check(f"{rid}: plan() gives 30 generations, 30,000/30,000 steps, everything within 6",
-              ok, s and f"{s['budget']}; champion {s['conns']} conns, held-out "
-                        f"{s['heldout_acc']:.3f}; {s['genomes_repaired']}/"
-                        f"{s['genomes_created']} genomes repaired")
+              # no accuracy printed: predictions for the smallnet grid are
+              # written before its results are seen
+              ok, s and f"{s['budget']}; champion {s['conns']} conns; "
+                        f"{s['genomes_repaired']}/{s['genomes_created']} genomes repaired")
     r, s, rows, _, _ = run_main(tmp, "halving", "--dataset", "spiral", "--seed", str(SEED0 + 6),
                                 "--allocation", "halving", "--generations", "6", "--strategy",
                                 "lamarckian", "--lr", "0.3", "--max-conns", "6")
