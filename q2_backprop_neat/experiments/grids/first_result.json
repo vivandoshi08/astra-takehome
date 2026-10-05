@@ -1,0 +1,10 @@
+{
+  "name": "first_result",
+  "datasets": ["xor", "spiral", "spiral3"],
+  "seeds": [0],
+  "common_args": {"--steps": 10, "--refine-fraction": 1.0, "--lr": 0.3},
+  "arms": [
+    {"name": "lamarckian", "args": {"--strategy": "lamarckian"}},
+    {"name": "baldwinian", "args": {"--strategy": "baldwinian"}}
+  ]
+}
