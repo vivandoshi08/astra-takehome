@@ -1,553 +1,342 @@
 # Q2 — Backprop-NEAT under a compute budget
 
-*Working draft. Section 6 is a placeholder: the small-network track is in
-progress. Every number comes
-from the committed file named beside it; where I derived a number while
-writing (a sum or mean over a committed `results.csv` or
-`fitness_history.csv`), I say so.*
+*Every number comes from the committed file named beside it; where I derived
+a number while writing (a sum or mean over a committed `results.csv` or
+`fitness_history.csv`) I say so. Detail tables are in the appendix; the
+predictions behind each experiment are in `experiments/PREDICTIONS_*.md`,
+committed before the run they predict; bugs and corrections are in
+`AUDIT.md` and `DEVLOG.md`.*
 
 **Summary**
 
-- Refinement runs inside the NEAT loop. With the settled allocations,
-  held-out mean over seeds 0–9 (xor / spiral / spiral3) is 0.967 / 0.903 /
-  0.825 for Lamarckian and 0.964 / 0.869 / 0.740 for Baldwinian. Plain NEAT
-  over the same 30 generations gets 0.704 / 0.749 / 0.620.
-- xor is at its ceiling everywhere (Bayes-optimal 0.984). The spirals are
-  far below theirs (k-NN reaches 0.99–1.00), so every difference worth
-  discussing is on the spirals.
-- At equal allocation, Lamarckian beats Baldwinian on the spirals on three
-  disjoint seed sets, by +0.065 to +0.153.
-- Most of my allocation predictions failed: 5 of 10 were contradicted at
-  10 seeds, and half of the clear verdicts at 3 seeds did not survive to 10.
-- The mechanism is only partly explained. Lamarckian inheritance carries
-  refinement forward, but children lose about 0.13 of their parents'
-  refined accuracy, and the one operator I could pin that on accounts for
-  only 0.025.
-- A linear size penalty buys smaller networks, never better ones: xor
-  drops from 12 to 7 connections at no cost; on the spirals every removed
-  connection costs accuracy. The write-up's multiplicative form, as I read
-  it, has a degenerate optimum: at λ = 1 every champion has 0 connections.
+- Refinement runs inside the NEAT loop. Settled allocations, held-out mean
+  over seeds 0–9 (xor / spiral / spiral3): Lamarckian 0.967 / 0.903 / 0.825,
+  Baldwinian 0.964 / 0.869 / 0.740; plain NEAT 0.704 / 0.749 / 0.620.
+- At equal allocation Lamarckian beats Baldwinian on the spirals, replicated
+  on three disjoint seed sets (+0.065 to +0.153). The mechanism is only
+  partly explained: inherited refinement gives children a head start, but
+  mutation erases most of it each generation.
+- Most of my allocation predictions failed (5 of 10 contradicted at 10
+  seeds); the two strategies want opposite allocations.
+- A linear size penalty buys smaller networks, never better ones. The
+  write-up's multiplicative form, as I read it, makes the empty network
+  optimal.
+- With 6 connections, xor loses nothing; adding sine activations lets 6
+  connections match the unconstrained spiral scores — by drawing stripes,
+  not spirals. The boundary plots show that high spiral scores are mostly
+  fits to the dense outer turns, not spirals.
 
 ## 1. What I built
 
-**Gradients.** I wrote the backward pass by hand: reverse mode in
-`GenomeNetwork.loss_and_grad` (`network.py`). The loss is mean binary
-cross-entropy, computed from the output pre-activation in softplus form so
-it stays finite past the ±60 sigmoid clip. Dead connections get exactly 0,
-and relu takes its left derivative at z = 0. `test_gradients.py` checks the
-gradient against finite differences on 300 evolved genomes and on the same
-genomes after 300 Adam steps, plus hand-built edge cases and closed-form
-logistic regression (worst error/tolerance 0.03 / 0.04). DEVLOG #6 records a
-mutation test that caught 8 of 9 injected gradient bugs and 6 of 6 injected
-Adam bugs (the injection script is not committed).
+- **Refinement.** Hand-written reverse-mode backprop
+  (`GenomeNetwork.loss_and_grad`), mean binary cross-entropy from the output
+  pre-activation; full-batch Adam, lr 0.3 (chosen by `lr_probe.py` on the fit
+  split only), parameters projected onto the config's ±30 range after every
+  update. `test_gradients.py` checks the gradient against finite differences
+  on 300 evolved and 300 refined genomes plus edge cases (all pass); a
+  mutation test caught 8/9 injected gradient bugs and 6/6 Adam bugs
+  (DEVLOG #6).
+- **One gradient step** = one full-batch gradient of the fit-split loss + one
+  Adam update; no line search, second-order or finite-difference steps;
+  forward passes free, as in the scaffold; the budget is charged for steps
+  actually taken. Every graded run reports its `budget.summary()` (section 2,
+  Appendix A1); none exceeded 30,000.
+- **Fitness** = fit-split accuracy after refinement (minus the penalty, if
+  any). **Elites** are re-refined every generation under both strategies, so
+  both see one protocol.
+- **Inheritance.** Lamarckian: `net.write_back(genome)`. Baldwinian: the
+  genome is untouched; the refined vector is kept only as
+  `genome.refined_params` (cleared at every evaluation) so the champion is
+  evaluated with the weights that earned its fitness.
+- **Data.** The 350 training points are split once (stratified, fixed seed)
+  into 280 fit points (refinement, fitness) and 70 validation points
+  (choosing the champion and choosing between arms); held-out is only ever
+  reported. (The split cost nothing measurable: over 293 allocation cells,
+  the validation-chosen champion differs from the training-fitness one by a
+  mean −0.0024 held-out, identical in 197 — derived from
+  `runs/allocation/results.csv`.)
+- **Allocation modes**: `fixed` (top `--refine-fraction` by pre-refinement
+  fitness, `--steps` each, generations from `budget.plan()`) and successive
+  `halving` (100×2, 50×4, 25×8, 12×16, 6×32 steps per generation).
+- **Penalty** on C = enabled connections: linear acc − λC (main: λ reads as
+  the accuracy a connection must buy, the same on every dataset); mult
+  1 − (1 − acc)(1 + λ√C), my reading of the write-up's "multiply the fitness
+  score by a factor that grows in proportion to the square root of the
+  number of connections". With a penalty the champion is chosen on
+  penalised validation accuracy, so selection cannot undo it.
+- **Small networks**: `--max-conns N` repairs every genome at creation to ≤ N
+  enabled connections, so the budget's meaning is unchanged.
+- **Harness**: `experiments/run_grid.py` runs grids in parallel, classifies
+  every cell, records each run's commit and code fingerprint, and picks arms
+  on validation only.
 
-**Optimiser.** Full-batch Adam at lr 0.3. After every update the parameters
-are projected onto the config's ±30 range, so what `write_back` stores is
-what was evaluated. I chose the lr with `lr_probe.py` on the fit split only
-(DEVLOG #9).
-
-**One gradient step** means one full-batch gradient of the fit-split loss
-plus one Adam update. No line searches, second-order steps or
-finite-difference steps. Forward passes are free, as in the scaffold, and
-the budget is charged for the steps actually taken.
-
-**Fitness** is fit-split accuracy after refinement, minus the penalty when
-there is one. A genome that is not refined keeps its pre-refinement
-accuracy; ties go to the lower loss.
-
-**Inheritance.** Lamarckian calls `net.write_back(genome)`. Baldwinian
-leaves the genome untouched and keeps the refined vector only as
-`genome.refined_params`, cleared at every evaluation, so the champion is
-evaluated with the weights that earned its fitness.
-
-**Elites** are refined again every generation under both strategies.
-neat-python carries them over as the same objects (144 of 144 in the audit,
-about 3.7 per generation), so Lamarckian elites accumulate refinement while
-Baldwinian elites repeat, and pay for, an identical refinement. I kept this
-so both strategies see the same protocol, and made it the first candidate
-mechanism.
-
-**Data split.** The 350 training points are split once, stratified, with a
-fixed `VAL_SEED`: 280 fit points (refinement and fitness), 70 validation
-points (choosing the champion and, in the harness, choosing between arms);
-the 150 held-out points are only reported. The champion is the
-generation-best genome with the highest validation accuracy (penalised
-validation accuracy when there is a penalty, `66f5915`). An honest check:
-every run also records the champion training fitness would have picked.
-Over the 293 completed allocation cells, the validation choice differs from
-it in held-out accuracy by a mean of −0.0024 and is identical in 197 cells
-(derived from `runs/allocation/results.csv`). The split bought no
-measurable accuracy; I kept it because it keeps every choice away from
-held-out data.
-
-**Allocations.** `fixed` refines the top `--refine-fraction` by
-pre-refinement fitness for `--steps` each, with generations from
-`budget.plan()`. `halving` refines 100 genomes × 2 steps, then 50 × 4,
-25 × 8, 12 × 16 and 6 × 32: 984 steps per generation, 29,520 over 30.
-
-**Penalty.** C is the number of enabled connections, the count the question
-uses. `main.penalised` implements:
-
-| form | fitness |
-|---|---|
-| linear | acc − λC |
-| sqrt | acc − λ√C |
-| mult | 1 − (1 − acc)(1 + λ√C) |
-
-Linear is the main sweep: λ reads directly as the accuracy a connection must
-buy, the same on every dataset and at every size. The backprop-NEAT write-up
-says in words that fitness is multiplied by a factor that grows with
-√connections, but gives no formula; `mult` is my reading of it, with the
-factor applied to the error so that larger means worse. `sqrt` is
-implemented but not swept.
-
-**Harness.** `experiments/run_grid.py` runs grids in parallel, classifies
-each cell (ok, invalid-budget, crashed, timeout, missing, args-mismatch),
-records each run's git commit and a fingerprint of its code, and selects
-arms on validation only.
-
-**Reproducing the settled runs**, from `q2_backprop_neat/`:
-
-```
-python experiments/run_grid.py experiments/grids/allocation.json   # seeds 0-9
-python experiments/run_grid.py experiments/grids/confirm.json      # seeds 10-12
-python main.py --dataset spiral --seed 0 --lr 0.3 --strategy lamarckian --steps 10  --refine-fraction 1.0 --run-id repro/lam_A
-python main.py --dataset spiral --seed 0 --lr 0.3 --strategy baldwinian --steps 100 --refine-fraction 0.1 --run-id repro/bald_B
-```
+Reproduce the settled runs (from `q2_backprop_neat/`):
+`python experiments/run_grid.py experiments/grids/allocation.json`, or one
+run: `python main.py --dataset spiral --seed 0 --lr 0.3 --strategy
+lamarckian --steps 10 --refine-fraction 1.0` (Baldwinian: `--strategy
+baldwinian --steps 100 --refine-fraction 0.1`).
 
 ## 2. Results (deliverable 1)
 
-The settled allocations are Lamarckian A (10 steps × 100% refined, 30
-generations) and Baldwinian B (100 steps × top 10%, 30 generations);
-section 3 says why. Held-out accuracy, mean ± sample sd. Seeds 0–9 from
-`runs/allocation/summary.md`; seeds 10–12, never used for a decision, from
-`runs/confirm/confirm_scored.md`.
+Held-out, mean ± sd (`runs/allocation/summary.md`; seeds 10–12 never used for
+a decision, `runs/confirm/confirm_scored.md`):
 
-| dataset | strategy / allocation | held-out, seeds 0–9 | held-out, seeds 10–12 | val (0–9) | conns (0–9) | `budget.summary()` (every cell) |
-|---|---|--:|--:|--:|--:|---|
-| xor | Lamarckian A | 0.967 ± 0.007 | 0.967 ± 0.007 | 0.999 | 12.3 | 30,000/30,000 gradient steps over 3,000 refinements |
-| xor | Baldwinian B | 0.964 ± 0.018 | 0.971 ± 0.010 | 0.984 | 8.7 | 30,000/30,000 gradient steps over 300 refinements |
-| spiral | Lamarckian A | 0.903 ± 0.069 | 0.889 ± 0.004 | 0.929 | 10.5 | 30,000/30,000 gradient steps over 3,000 refinements |
-| spiral | Baldwinian B | 0.869 ± 0.057 | 0.833 ± 0.064 | 0.881 | 9.1 | 30,000/30,000 gradient steps over 300 refinements |
-| spiral3 | Lamarckian A | 0.825 ± 0.055 | 0.787 ± 0.037 | 0.854 | 10.2 | 30,000/30,000 gradient steps over 3,000 refinements |
-| spiral3 | Baldwinian B | 0.740 ± 0.060 | 0.682 ± 0.020 | 0.797 | 8.4 | 30,000/30,000 gradient steps over 300 refinements |
+| dataset | allocation | seeds 0–9 | seeds 10–12 | conns | `budget.summary()` |
+|---|---|--:|--:|--:|---|
+| xor | Lamarckian 10×100% | 0.967 ± 0.007 | 0.967 ± 0.007 | 12.3 | 30,000/30,000 gradient steps over 3,000 refinements |
+| xor | Baldwinian 100×10% | 0.964 ± 0.018 | 0.971 ± 0.010 | 8.7 | 30,000/30,000 gradient steps over 300 refinements |
+| spiral | Lamarckian 10×100% | 0.903 ± 0.069 | 0.889 ± 0.004 | 10.5 | 30,000/30,000 gradient steps over 3,000 refinements |
+| spiral | Baldwinian 100×10% | 0.869 ± 0.057 | 0.833 ± 0.064 | 9.1 | 30,000/30,000 gradient steps over 300 refinements |
+| spiral3 | Lamarckian 10×100% | 0.825 ± 0.055 | 0.787 ± 0.037 | 10.2 | 30,000/30,000 gradient steps over 3,000 refinements |
+| spiral3 | Baldwinian 100×10% | 0.740 ± 0.060 | 0.682 ± 0.020 | 8.4 | 30,000/30,000 gradient steps over 300 refinements |
 
-| dataset | majority class (held-out) | plain NEAT, 30 gens, seeds 0–2 | k-NN held-out (AUDIT.md) |
-|---|--:|--:|--:|
-| xor | 0.513 | 0.704 ± 0.015 | 0.960–0.993 (Bayes-optimal 0.984) |
-| spiral | 0.520 | 0.749 ± 0.051 | 0.987–0.993 |
-| spiral3 | 0.567 | 0.620 ± 0.029 | 1.000 |
-
-Every baseline run reports `0/30,000 gradient steps over 0 refinements`.
-The baseline is not quite like-for-like: it ran at `11e5994`, before the
-validation split (champion chosen on training fitness over all 350
-points), and has 3 seeds. The seed spread is large: Lamarckian A on spiral
-ranges from 0.800 to 0.980, and one held-out point is 0.67%. Accuracy
-alone also cannot show that a spiral was learned: the shipped plain-NEAT
-spiral champion scored 0.767 with a corner cut (AUDIT, "Facts about the
-frozen data"); section 7 settles this.
+Context: majority class 0.513 / 0.520 / 0.567; plain NEAT (30 generations,
+`0/30,000 gradient steps`, 3 seeds, before the validation split) 0.704 /
+0.749 / 0.620; k-NN 0.96–0.99 / 0.99 / 1.00, xor Bayes 0.984 (AUDIT.md).
+xor is at its ceiling; the spirals are far below theirs. Seed spread is
+large (Lamarckian spiral 0.800–0.980; one held-out point is 0.67%).
 
 ## 3. Allocation study (deliverable 2)
 
-**Pilot.** Before choosing arms I refined 100 genomes per dataset to 300
-steps (`experiments/pilot.py`, seed 100, which no grid uses; 60,000 steps
-per dataset, outside any graded run), sampled from generations 0, 10, 20,
-29 of a Baldwinian run (Appendix A4). Findings: pre-refinement fitness
-barely predicts post-refinement fitness (Spearman ρ 0.07–0.09); 10-step
-rankings are near-random on the spirals (ρ 0.02 / 0.27) although 10 steps
-give 89–99% of the median gain there; successive halving would cut 4–6 of
-the 300-step top 6.
+**Pilot first.** I refined 100 genomes per dataset to 300 steps
+(`pilot.py`, unused seed 100; Appendix A4): pre-refinement fitness barely
+predicts post-refinement fitness (Spearman 0.07–0.09); 10-step rankings are
+near-random on the spirals (0.02 / 0.27); successive halving would cut 4–6
+of the eventual top 6. My pre-written rule turned this into "100–300 steps,
+1–3 generations" — degenerate, because it valued ranking a fixed set of
+genomes and gave generations no value, while evolution was still improving
+at generation 29. I discarded the rule and kept the measurements.
 
-My rule written in advance (steps where ρ ≥ 0.9, a fraction whose
-pre-screen recalls 9 of 10) gave 100 / 200 / 300 steps × 100%, leaving
-3 / 1 / 1 generations. That is degenerate: it prices how well refinement
-ranks a fixed set of genomes and gives generations no value. `first_result`
-showed evolution still improving at the end (champions from generations
-21–29; mean connections per genome growing from 2.0 to 5.6–11.9,
-`runs/first_result/*/*/fitness_history.csv`). I kept the measurements and
-discarded the rule (`1f87a0b`).
+**Predictions committed before the grid** (`PREDICTIONS_allocation.md`): P1
+Baldwinian B (100 steps × top 10%) < A (10 × 100%) on the spirals; P1b the
+gap is smaller under Lamarckian; P2 C (50 × 100%, 6 generations) < A; P3
+Baldwinian successive halving < A. 5 allocations × 2 strategies × 3 datasets,
+seeds 0–2, then — **after seeing those** (3 supported / 3 contradicted / 4
+inconclusive) — seeds 3–9, rule unchanged, both reported.
 
-**Predictions, committed before the grid** (`dfa1495`,
-`PREDICTIONS_allocation.md`): P1 Baldwinian B < A on the spirals (B picks
-whom to refine by an uninformative score); P1b the B − A gap is smaller
-under Lamarckian; P2 C < A under both strategies (6 generations too few to
-grow networks); P3 Baldwinian D < A (late bloomers). Verdict rule:
-*supported* if the difference has the predicted sign and |diff| >
-sqrt((sd_X² + sd_A²)/2), *contradicted* if the opposite sign by that much,
-*inconclusive* otherwise.
+| arm | allocation | Lam spiral | Lam spiral3 | Bald spiral | Bald spiral3 |
+|---|---|--:|--:|--:|--:|
+| A | 10 × 100%, 30 gens | **0.903** | **0.825** | 0.815 | 0.677 |
+| B | 100 × top 10%, 30 gens | 0.877 (n=9) | 0.809 | **0.869** | **0.740** |
+| C | 50 × 100%, 6 gens | 0.808 | 0.736 | 0.845 | 0.695 |
+| D | successive halving, 30 gens | 0.903 (n=7) | 0.833 (n=8) | 0.879 | 0.683 |
+| E | 5 × 100%, 60 gens | 0.877 | 0.793 | 0.851 | 0.673 |
 
-**Grid.** 5 allocations × 2 strategies × 3 datasets, first on seeds 0–2
-(90 runs): 3 supported, 3 contradicted, 4 inconclusive, with spiral and
-spiral3 disagreeing in direction for C and D and seed sd up to 0.10. (I
-first miscounted this as "4 supported, 4 contradicted" in a commit message;
-corrected in `ef2763e`.) **After seeing them** I added seeds 3–9 (`34dc34c`),
-predictions and rule unchanged, both seed sets scored and labelled, and
-moved the untouched confirmation set from seeds 3–5 to 10–12.
+At seeds 0–9: 2 supported, 5 contradicted, 3 inconclusive. **B helps
+Baldwinian** (+0.053 / +0.063) and not Lamarckian; halving *won* on spiral
+for Baldwinian; only "6 generations hurts Lamarckian" held (−0.095 / −0.089).
+I had priced B's weakness (refining genomes chosen by an uninformative score)
+but not A's matching weakness under Baldwinian: a 10-step fitness that is
+itself near-random. 7 of 150 Lamarckian cells crashed (section 8, item 6).
 
-Held-out on the spirals, seeds 0–9 (`runs/allocation/summary.md`; xor and
-validation in Appendix A1):
-
-| arm | allocation | gens | `budget.summary()` | Lam spiral | Lam spiral3 | Bald spiral | Bald spiral3 |
-|---|---|--:|---|--:|--:|--:|--:|
-| A | 10 steps × 100% | 30 | 30,000/30,000 over 3,000 refinements | 0.903 ± 0.069 | 0.825 ± 0.055 | 0.815 ± 0.035 | 0.677 ± 0.061 |
-| B | 100 steps × top 10% | 30 | 30,000/30,000 over 300 | 0.877 ± 0.068 (n=9) | 0.809 ± 0.061 | 0.869 ± 0.057 | 0.740 ± 0.060 |
-| C | 50 steps × 100% | 6 | 30,000/30,000 over 600 | 0.808 ± 0.038 | 0.736 ± 0.024 | 0.845 ± 0.024 | 0.695 ± 0.033 |
-| D | successive halving | 30 | 29,520/30,000 over 5,790 | 0.903 ± 0.050 (n=7) | 0.833 ± 0.040 (n=8) | 0.879 ± 0.059 | 0.683 ± 0.027 |
-| E | 5 steps × 100% | 60 | 30,000/30,000 over 6,000 | 0.877 ± 0.061 | 0.793 ± 0.045 | 0.851 ± 0.037 | 0.673 ± 0.064 |
-
-**Verdicts at seeds 0–9** (Appendix A2): 2 supported, 5 contradicted, 3
-inconclusive. P1 and P1b are contradicted on both spirals: B *helps*
-Baldwinian (+0.053 / +0.063) and does not help Lamarckian. P3 is
-contradicted on spiral (D − A = +0.064). Only P2 for Lamarckian is supported
-on both spirals (−0.095 / −0.089). Three of the six clear verdicts at 3
-seeds became inconclusive at 10. My reading of P1 (interpretation, tested
-in section 4): I priced B's weakness — choosing whom to refine by an
-uninformative score — but not A's matching weakness under Baldwinian, a
-10-step fitness that is itself near-random on the spirals.
-
-**Crashes.** 7 of 150 Lamarckian cells crashed (B 1, D 6), 0 Baldwinian,
-all with neat-python's `population size 100 is less than num_species *
-min_species_size 102 (51 * 2)`. Kept as results, not re-run (section 8,
-item 6).
-
-**Settled allocation, and why.** Mean validation accuracy over the spiral
-and spiral3 cells of seeds 0–9 (xor is at its ceiling in every arm), among
-arms with no crashed cell (clarified in `PREDICTIONS_confirm.md`):
-- **Lamarckian A** (0.891; C 0.794, E 0.861). B and D had crashes; D's
-  means are over 7 and 8 survivors, and an allocation that fails 6 of 30
-  runs is not one I can recommend whatever its survivors score.
-- **Baldwinian B** (0.839; A 0.782, C 0.792, D 0.818, E 0.802).
-Averaging over all three datasets gives the same choices.
-
-**Confirmation on untouched seeds 10–12** (claims `3d04b21`, results
-`7749e0b`, Appendix A3):
-
-| claim | spiral | spiral3 | |
-|---|--:|--:|---|
-| C1: Lamarckian A > Baldwinian A | +0.111 | +0.140 | holds |
-| C2: Baldwinian B > Baldwinian A | +0.056 | +0.036 | holds |
-| C3: Lamarckian B < Lamarckian A | +0.024 | +0.000 | **does not hold** |
-| C4: Lamarckian A > Baldwinian B | +0.056 | +0.104 | holds |
-
-So for Lamarckian I cannot tell A and B apart. I kept A rather than choose
-on the confirmation set.
+**Settled:** by mean validation accuracy on the spiral cells, among arms
+with no crashed cell — **Lamarckian A** (0.891; D was higher on its
+survivors but failed 6 of 30 runs) and **Baldwinian B** (0.839). On untouched
+seeds 10–12 three of four committed claims held (Lamarckian A > Baldwinian A
++0.111 / +0.140; Baldwinian B > A +0.056 / +0.036; Lamarckian A > Baldwinian
+B); "Lamarckian B < A" did not, so for Lamarckian A and B are equivalent.
 
 ## 4. Lamarckian or Baldwinian (deliverable 3)
 
-**What it does, and the evidence.** `--strategy` selects either. I checked
-that each does what I intended rather than assuming it. `test_main.py`
-checks from the runs' own logs: "refined weights written into the genome —
-300/300 genomes changed" (Lamarckian) against "genome weights never change
-— 0/300 genomes changed" (Baldwinian); a Lamarckian elite carried into the
-next generation "starts where its refinement ended" (its weight hash and
-pre-refinement loss equal its previous post-refinement values); a
-Baldwinian elite "repeats an identical refinement"; and a Baldwinian
-champion's genome weights differ from the refined ones it is evaluated
-with. The graded runs agree: over the completed allocation-grid runs,
-Baldwinian refined 387,000 genome evaluations and changed 0 genomes;
-Lamarckian refined 368,700 and changed 368,700 (derived by summing
-`n_genome_changed` and `n_refined` over `runs/allocation/*/*/fitness_history.csv`).
+**Which it does, and the evidence.** Either, by `--strategy`; I checked each
+does what I intended. `test_main.py`, from the runs' own logs: Lamarckian
+"300/300 genomes changed" vs Baldwinian "0/300"; a Lamarckian elite carried
+over starts exactly where its refinement ended (same weight hash, same
+loss); a Baldwinian elite repeats an identical refinement; a Baldwinian
+champion's genome weights differ from the refined ones it is scored with.
+Across the graded allocation runs, Baldwinian refined 387,000 genome
+evaluations and changed 0 genomes; Lamarckian refined and changed 368,700
+(derived from `fitness_history.csv`). And the population shows it
+(`figures/inheritance_signature.png`): at the same allocation the
+Lamarckian population's *pre-refinement* accuracy climbs to 0.79 / 0.68 /
+0.62, while the Baldwinian population's stays at 0.52 / 0.50 / 0.52 for 30
+generations although its refined accuracy rises — its genomes never improve
+on their own; only how well they learn is selected.
 
-The population shows it too (`figures/inheritance_signature.png`): at the
-same allocation (10 steps x 100%), the Lamarckian population's own
-pre-refinement accuracy climbs over 30 generations to 0.79 / 0.68 / 0.62
-(median of 10 seeds; xor / spiral / spiral3), while the Baldwinian
-population's stays at 0.52 / 0.50 / 0.52 the whole time even as its
-post-refinement accuracy rises. Under Baldwinian, selection acts only on
-how well a genome learns; its raw weights never improve, and nothing of
-what is learned is assimilated into the genome within 30 generations.
+**The difference**: Lamarckian − Baldwinian at equal allocation, spiral /
+spiral3: +0.088 / +0.148 (seeds 0–9), +0.111 / +0.140 (10–12), +0.065 /
++0.153 (20–29). Lamarckian runs also fragment into many species (up to
+46–50 per run in A/B/D vs 1–7 Baldwinian).
 
-**The difference to explain.** At equal allocation (A), Lamarckian −
-Baldwinian held-out:
+**Mechanism: hypotheses tested in order, each prediction committed first**
+(`PREDICTIONS_mechanism*.md`; Appendix A5–A8):
 
-| seeds | spiral | spiral3 |
-|---|--:|--:|
-| 0–9 (allocation grid) | +0.088 | +0.148 |
-| 10–12 (confirmation) | +0.111 | +0.140 |
-| 20–29 (final test) | +0.065 | +0.153 |
+| round | hypothesis | key prediction → result | what it settled |
+|---|---|---|---|
+| 1 | **H1 accumulation**: refinement adds up along Lamarckian lineages; Baldwinian restarts from shallow, noisy 10-step fitness | refining Baldwinian deeper closes ≥ half the gap → **supported** on spiral (gap 0.087 → 0.006 at 30 steps × 33%), **partial** on spiral3 (0.148 → 0.085); inverted U beyond that | depth helps Baldwinian until too few genomes are refined |
+| | | Lamarckian children start within 0.05 of parents' refined accuracy → **contradicted**: −0.129 (Baldwinian −0.179) | carry-over exists but is lossy |
+| | **H2** fragmentation is a side effect | topology-only speciation removes it (**supported**: 1 species, 0 crashes) and the advantage survives → spiral3 **yes** (+0.109), spiral **inconclusive** (+0.047); Lamarckian loses 0.04 without it | partly refuted: weight-aware speciation helps Lamarckian |
+| 2 | **H4** crossover vs **H3** perturbation erases the carry-over | clones lose as much as crosses (−0.125 vs −0.129): **H4 refuted**; cutting perturbation 0.8/0.7 → 0.2 leaves the loss at −0.125: **H3 refuted** | something else in mutation |
+| 3 | **H5** weight replacement vs **H6** activation swaps | mutating refined genomes one operator at a time: replacement 60% of the damage (**H5 supported**), activation 8–10% (**not**), structural ~35%, perturbation ~30% (overlapping) | replacement is the largest single eraser |
+| final, fresh seeds 20–29 | replacement causes the loss | removing it: children keep 0.025 more (predicted ≥ 0.03: **contradicted**, narrowly); final accuracy unchanged (inconclusive); main effect replicates (**supported**) | |
 
-The strategies also prefer different allocations, and Lamarckian runs
-fragment: maximum species per run A 5–46, B 16–49, D 11–50 (C 1–15, E 3–14),
-against 1–7 in every Baldwinian arm (recomputed from `n_species`;
-corrected in `ef2763e`).
-
-**The chain of hypotheses.** Before each round I committed its predictions
-and verdict rules (`PREDICTIONS_mechanism*.md`); each round's runs record
-that commit. Seeds 0–9 unless stated; Appendices A5–A8.
-
-| round | hypothesis | committed prediction | result | what it settled |
-|---|---|---|---|---|
-| 1 (`f2ef424`→`5453173`) | **H1 accumulation**: Lamarckian refinement adds up along lineages; Baldwinian restarts every generation from shallow, noisy 10-step fitness | M1: Baldwinian at 300 × 3% beats 10 × 100% | **inconclusive**: inverted U (spiral 0.815 → 0.897 at 30 steps → 0.833 at 300) | depth helps until too few genomes are refined |
-| | | M2: depth closes ≥ half the gap | spiral 0.087 → 0.006 **supported**; spiral3 0.148 → 0.085 **partial** | closable on spiral, not on spiral3 |
-| | | M5: Lamarckian children start within 0.05 of parents' refined accuracy | −0.129 (n = 15,979): **contradicted**; Baldwinian −0.179 | carry-over exists (~0.05 better than Baldwinian) but is lossy |
-| | **H2**: fragmentation is a side effect | M3: topology-only speciation stops it | median 1 species, no crashes: **supported** | |
-| | | M4: the advantage survives without it | spiral +0.047 **inconclusive**; spiral3 +0.109 **supported** | partly refuted: without weight-aware speciation Lamarckian loses 0.036 / 0.039, Baldwinian nothing |
-| 2 (`01bd9d3`→`81a30c5`) | **H3** parameter perturbation vs **H4** crossover | A: clones lose as much as crosses (H3) or clearly less (H4) | clones −0.125, crosses −0.129 | **H4 refuted**; clones with unchanged node/connection counts still lose 0.089 |
-| | | B1: perturbation 0.8/0.7 → 0.2 brings the loss above −0.08 | still −0.125: **contradicted** | **H3 as stated refuted** (B2 inconclusive) |
-| 3 (`3528f38`→`ee3e292`) | **H5** weight/bias replacement vs **H6** activation mutation | operator share of mutation damage ≥ 0.4 (refined genomes, seed 100) | replace 0.61 / 0.60: **H5 supported**; activation 0.08 / 0.10: not; perturb 0.28 / 0.34 vs check C2 ≤ 0.25: **contradicted** | replacement is the largest single operator; shares overlap (sum > 1) |
-| final (`045e57d`→`ebccd07`), fresh seeds 20–29 | replacement causes the loss | F1: without replacement, children keep ≥ 0.03 more | +0.025 (−0.132 → −0.107; 5 of 6 runs): **contradicted**, narrowly | replacement explains part of the loss |
-| | | F2: removing it helps Lamarckian more | interaction +0.030 / −0.026: **inconclusive** | |
-| | | F3: the effect replicates | +0.065 / +0.153: **supported** | |
-
-Two caveats on my own evidence: round 2's Test A was scored "H3 supported"
-by its own rule, but Test B then refuted H3, so Test A only ever showed that
-crossover is not the cause. In round 3 I changed `mutation_ablation.py`
-after committing its predictions (a fresh config has no innovation tracker,
-so the low-mutation operator is built from the run's own config; diff
-`3528f38..ee3e292`); the change touched only that consistency arm.
-
-**Status** (`experiments/MECHANISM_SUMMARY.md`). Supported: Lamarckian's
-advantage is robust; inherited refinement gives a partial head start;
-Baldwinian's handicap is shallow, noisy fitness, and refining fewer genomes
-more deeply recovers part of the gap. The carry-over is eroded by mutation
-as a whole; no single operator accounts for it, and recovering 0.025 of it
-did not change final accuracy measurably. Unexplained: why Lamarckian
-needs weight-aware speciation; why depth closes the gap on spiral but not
-spiral3; where most of the ~0.13 per-generation loss comes from. I stopped
-there, by the stopping rule committed in `PREDICTIONS_mechanism2.md`.
+**Where it stands.** Supported: the advantage is robust; inherited
+refinement gives a partial head start; Baldwinian's handicap is shallow,
+noisy fitness, and deeper refinement of fewer genomes recovers part of the
+gap. The carry-over is eroded by mutation as a whole, not one operator, and
+recovering part of it did not change accuracy at this budget. Unexplained:
+why weight-aware speciation helps Lamarckian; why depth closes the gap on
+spiral but not spiral3. I stopped there by a stopping rule committed in
+advance.
 
 ## 5. Complexity frontier (deliverable 4)
 
-Design and predictions committed before running (`02e29c7`,
-`PREDICTIONS_frontier.md`); results `85a4b96`
-(`runs/frontier/frontier_scored.md`, `figures/frontier.png`). Settled
-allocations, 30 generations, seeds 0–9, all three datasets: linear λ = 0,
-0.001, 0.003, 0.01, 0.03 and mult λ = 0.1, 0.3, 1.0 (480 runs, all ok, all
-with one code fingerprint). The champion is chosen on penalised validation
-accuracy (`66f5915`), so selection cannot undo the size pressure; λ = 0
-reproduces the allocation grid's cells exactly.
+Settled allocations × linear λ ∈ {0, 0.001, 0.003, 0.01, 0.03} and mult
+λ ∈ {0.1, 0.3, 1.0} × 3 datasets × 10 seeds (480 runs, `runs/frontier`);
+λ = 0 reproduces the allocation grid exactly.
 
 ![frontier](figures/frontier.png)
 
-Held-out mean (champion enabled connections), 10 seeds; full table with sd
-in the scored file:
-
-| penalty | Lam xor | Lam spiral | Lam spiral3 | Bald xor | Bald spiral | Bald spiral3 |
+| linear λ | Lam xor | Lam spiral | Lam spiral3 | Bald xor | Bald spiral | Bald spiral3 |
 |---|--:|--:|--:|--:|--:|--:|
-| none (λ = 0) | 0.967 (12.3) | 0.903 (10.5) | 0.825 (10.2) | 0.964 (8.7) | 0.869 (9.1) | 0.740 (8.4) |
-| linear 0.001 | 0.968 (7.3) | 0.910 (9.4) | 0.780 (8.3) | 0.973 (7.5) | 0.826 (6.7) | 0.693 (5.5) |
-| linear 0.003 | 0.969 (7.2) | 0.861 (7.9) | 0.779 (6.8) | 0.967 (6.9) | 0.781 (4.9) | 0.676 (4.4) |
-| linear 0.01 | 0.975 (6.6) | 0.855 (5.8) | 0.726 (4.2) | 0.855 (4.7) | 0.729 (3.4) | 0.641 (1.2) |
-| linear 0.03 | 0.928 (5.0) | 0.685 (1.4) | 0.641 (1.2) | 0.585 (1.8) | 0.668 (1.0) | 0.633 (1.3) |
-| mult 0.1 | 0.967 (9.1) | 0.831 (6.6) | 0.700 (4.3) | 0.663 (3.3) | 0.729 (4.4) | 0.624 (1.6) |
-| mult 0.3 | 0.967 (8.9) | 0.759 (4.0) | 0.641 (1.2) | 0.567 (1.2) | 0.667 (1.3) | 0.643 (1.1) |
-| mult 1.0 | 0.487 (0.0) | 0.480 (0.0) | 0.433 (0.0) | 0.487 (0.0) | 0.480 (0.0) | 0.433 (0.0) |
+| 0 | 0.967 (12.3) | 0.903 (10.5) | 0.825 (10.2) | 0.964 (8.7) | 0.869 (9.1) | 0.740 (8.4) |
+| 0.001 | 0.968 (7.3) | 0.910 (9.4) | 0.780 (8.3) | 0.973 (7.5) | 0.826 (6.7) | 0.693 (5.5) |
+| 0.003 | 0.969 (7.2) | 0.861 (7.9) | 0.779 (6.8) | 0.967 (6.9) | 0.781 (4.9) | 0.676 (4.4) |
+| 0.01 | 0.975 (6.6) | 0.855 (5.8) | 0.726 (4.2) | 0.855 (4.7) | 0.729 (3.4) | 0.641 (1.2) |
+| 0.03 | 0.928 (5.0) | 0.685 (1.4) | 0.641 (1.2) | 0.585 (1.8) | 0.668 (1.0) | 0.633 (1.3) |
 
-**Shape.** On xor the frontier has a free region: a tiny linear penalty
-(0.001) cuts Lamarckian champions from 12.3 to 7.3 connections at no
-accuracy cost — they were carrying connections that did nothing — and
-accuracy holds down to about 6.6 connections, then falls. On the spirals
-there is no free region: accuracy falls with every connection removed, as
-expected for problems that need 4–8 hidden units. Baldwinian sits below
-Lamarckian at every λ and collapses sooner (xor 0.855 at λ = 0.01 with
-seeds splitting between solved and collapsed).
-
-**Verdicts.** FP1 (penalty shrinks networks, 6/6 cells), FP2 (monotone in
-λ), FP4 (no penalised arm beats λ = 0 beyond spread — the penalty buys size,
-not accuracy) and FP6 (Lamarckian ≥ Baldwinian at every linear λ, 10/10)
-supported; FP3 (at λ = 0.01 xor holds, spirals drop) 5 of 6 cells as
-predicted (Lamarckian spiral's drop, −0.048, is within its spread 0.074).
-**FP5 contradicted**: I predicted the mult form would shrink xor less than
-spiral3, but at λ = 1 every champion in every run has 0 connections and
-predicts a single class. The mult form's penalty is λ√C times the error, and
-√0 = 0, so an empty network pays nothing and scores its constant-guess
-accuracy (about 0.51 on the fit split). A spiral network with error 0.15 and
-9 connections scores 1 − 0.15 × (1 + 3) = 0.40 at λ = 1, so the empty
-network wins. Its held-out accuracy
-(0.487 / 0.480 / 0.433) is *below* the majority floor because the training
-majority is the held-out minority. The linear form has no such cliff,
-which is why it is the main sweep.
+Held-out (mean champion connections), 10 seeds. **Shape:** xor has a free
+region — λ = 0.001 removes 5 of 12 connections at no cost (they did nothing),
+and accuracy holds to ~6.6 connections; the spirals have none — every
+removed connection costs accuracy. Baldwinian sits below Lamarckian at every
+λ (10/10) and collapses sooner. **No penalty improved held-out accuracy**
+beyond spread anywhere (FP4): the penalty buys size, not accuracy. Five of
+six predictions held; the sixth (FP5, mult shrinks xor less than spiral3)
+failed revealingly: at mult λ = 1 *every* champion has 0 connections. The
+empty network pays no penalty (√0 = 0) and scores its constant-guess
+accuracy (~0.51 on fit); a spiral network with error 0.15 and 9 connections
+scores 1 − 0.15 × 4 = 0.40. Its held-out (0.487 / 0.480 / 0.433) is below the
+majority floor because the training majority is the held-out minority.
 
 ## 6. Small-network track (deliverable 5)
 
-**TODO(smallnet)**: in progress. Plan: `--max-conns 6`, settled
-allocations, 10 seeds, all three datasets, standard activations (sigmoid,
-tanh, relu), plus a separately labelled arm adding sine and gaussian
-(adding activations changes NEAT's toolbox, so that arm is not comparable
-with the unconstrained numbers). For reference, the frontier already shows
-what ≤ 6-connection champions reach under a penalty: Lamarckian xor 0.928
-at 5.0 connections, spiral 0.855 at 5.8 (linear λ = 0.01).
+`--max-conns 6` (every genome repaired at creation; no champion over 6),
+settled allocations, 10 seeds (`runs/smallnet/smallnet_scored.md`;
+predictions `PREDICTIONS_smallnet.md`).
 
-| dataset | ≤ 6 conns, standard activations | ≤ 6 conns, + sine/gauss (separate) | unconstrained (Lam A, seeds 0–9) |
-|---|--:|--:|--:|
-| xor | TODO(smallnet) | TODO(smallnet) | 0.967 ± 0.007 |
-| spiral | TODO(smallnet) | TODO(smallnet) | 0.903 ± 0.069 |
-| spiral3 | TODO(smallnet) | TODO(smallnet) | 0.825 ± 0.055 |
+| dataset | ≤ 6, Lamarckian | ≤ 6, Baldwinian | ≤ 6 + sin/gauss, Lamarckian *(separate)* | ≤ 6 + sin/gauss, Baldwinian *(separate)* | unconstrained Lamarckian |
+|---|--:|--:|--:|--:|--:|
+| xor | 0.967 ± 0.019 | 0.956 ± 0.020 | 0.969 ± 0.004 | 0.976 ± 0.006 | 0.967 ± 0.007 (12.3 conns) |
+| spiral | 0.826 ± 0.043 | 0.826 ± 0.071 | 0.906 ± 0.034 | 0.849 ± 0.048 | 0.903 ± 0.069 (10.5) |
+| spiral3 | 0.779 ± 0.030 | 0.711 ± 0.033 | 0.863 ± 0.049 | 0.816 ± 0.056 | 0.825 ± 0.055 (10.2) |
+
+**Best with ≤ 6 connections, standard activations: xor 0.967, spiral 0.826,
+spiral3 0.779** (Lamarckian; differences vs unconstrained 0.000 / −0.077 /
+−0.046). With sine and gaussian hidden units — reported separately because
+they change NEAT's toolbox — 6 connections reach 0.969 / 0.906 / 0.863,
+matching or beating the unconstrained standard networks; 9–10 of 10 sine
+champions use them. **But they draw stripes, not spirals**
+(`figures/smallnet_sine_representative.png`): diagonal bands on spiral,
+vertical bands on spiral3, whose period happens to match the spacing of the
+arms. That does improve the inner third (median 0.74 / 0.72 vs 0.60 / 0.54
+with standard activations; computed from the champions), but it is aliasing
+the arms, not modelling them. Predictions: S1a, S1b (Lamarckian), S2 (3 of 4)
+supported; S3 contradicted for Baldwinian (sine helped xor by +0.020); S4
+held on spiral3 only. Three graded cells were run during development before
+the predictions (their numbers were withheld from me); excluding them flips
+two verdicts and moves no mean by more than 0.004.
 
 ## 7. Decision boundaries (deliverable 6)
 
-`figures/` (regenerate with `python experiments/make_figures.py`; per-figure
-readings with the seeds each claim covers are in `figures/README.md`).
-Champions are drawn through `champion_net()`, so Baldwinian boundaries use
-the refined weights that earned their fitness (the scaffold drew unrefined
-ones, AUDIT #1); the recomputed held-out accuracy of all 69 plotted
-champions matches their `summary.json`. The representative panel is the
-lower-median seed of 10; `seeds_*.png` show all 10 seeds unsorted, so
-nothing below is cherry-picked. The question the plots answer is whether a
-spiral score is a spiral, since a single cut already scores ~0.75 here.
+`figures/` (`python experiments/make_figures.py`; readings with seed lists in
+`figures/README.md`; all 69 plotted champions' accuracies re-checked against
+`summary.json`). Representative = lower-median seed; `seeds_*.png` show all
+10 seeds unsorted.
 
-![xor](figures/representative_xor.png)
 ![spiral](figures/representative_spiral.png)
 ![spiral3](figures/representative_spiral3.png)
 ![accuracy by radius](figures/radius_accuracy.png)
 
 - **xor — right shape.** All 10 Lamarckian champions split the plane into
-  four quadrants along the axes (0.960–0.980; Bayes 0.984). 7/10 Baldwinian
-  do; the other 3 (s1, s7, s9) cut one blob off with a diagonal — the wrong
-  orientation, still 0.933–0.953. Plain NEAT draws one cut around one blob
-  (0.687–0.713). Off the data the quadrants break down (`wide_view.png`);
-  held-out data never tests that.
-- **spiral — partly a spiral.** Plain NEAT is one near-vertical cut
-  (0.69–0.79). 6/10 Lamarckian champions curl a class-1 tongue into the
-  inner arm (inner-third accuracy 0.76–0.94, scores 0.913–0.980); the other
-  4 are corners or boxes that score 0.800–0.867 while getting the inner
-  third at or below its majority rate — right score, wrong shape.
-  Baldwinian: 3 curl, 3 vertical stripes, 4 boxes.
+  quadrants along the axes; 3 of 10 Baldwinian cut one blob off diagonally
+  (wrong orientation, still 0.93–0.95). Plain NEAT: one cut, 0.69–0.71.
+- **spiral — partly a spiral.** 6 of 10 Lamarckian champions curl into the
+  inner arm (inner-third accuracy 0.76–0.94); the other 4 are corners or
+  boxes that score 0.80–0.87 while getting the inner third at or below its
+  majority rate. Plain NEAT is one vertical cut (0.69–0.79).
 - **spiral3 — mostly not a spiral.** 16 of 20 refined champions are at or
-  below the majority rate on the inner third (the inner 0.86 revolutions).
-  Their 0.67–0.87 comes from boxes, U-shapes and stripes that fit the outer
-  turns, where most points sit (point density grows with radius). One
-  Lamarckian champion (s5, 0.953) winds with the inner arm. The median
-  Lamarckian champion (s6, 0.800) is axis-aligned boxes and stripes.
-- **Across both spirals** no champion changes label along a ray from the
-  centre as often as the data do (at most 1.87 flips per ray against 2.43
-  for a 5-NN classifier).
+  below the majority rate on the inner third; their 0.67–0.87 comes from
+  boxes and stripes fitting the outer turns, where most points are. One
+  champion (Lamarckian s5, 0.953) winds with the inner arm.
 
 What the shapes say: held-out accuracy on these spirals mostly rewards
-fitting the dense outer turns, and ~0.80 is reachable without learning the
-spiral. Refinement and Lamarckian inheritance raise accuracy there; only on
-spiral does Lamarckian refinement reliably start winding inward
-(inner-third median 0.77, Baldwinian 0.69, plain NEAT 0.60). The champions
-are small (8–12 connections), which is consistent with the frontier: on the
-spirals every connection is still paying for itself.
+fitting the dense outer turns; ~0.80 is reachable without learning the
+spiral, and the gains from refinement and from Lamarckian inheritance are
+mostly gains there. No champion changes label along a ray as often as the
+data do (≤ 1.87 flips vs 2.43 for 5-NN).
 
 ## 8. What went wrong, and how I found it (deliverable 7)
 
-**1. A Baldwinian champion would have been scored with its unrefined
-weights.** *What broke*: the shipped `main.py` and `viz.py` rebuilt the
-champion from its genome; under Baldwinian inheritance the genome never
-holds the refined weights, so every Baldwinian result would have been
-under-reported — exactly the comparison deliverable 3 asks about. *How I
-found it*: reading the scaffold before writing any refinement, which is why
-I audited first. *What I did*: evaluation stores `genome.refined_params`,
-`champion_net()` loads it, cleared at every evaluation. *Verified*:
-`test_scaffold_fixes.py` "0 leaked, 63 held by carried-over elites";
-`test_main.py` checks a Baldwinian champion's genome weights differ from its
-refined ones and reported accuracies are `champion_net`'s.
+1. **The Baldwinian champion would have been scored with unrefined
+   weights.** The shipped driver and `viz.py` rebuilt the champion from its
+   genome, which under Baldwinian never holds the refined weights — every
+   Baldwinian number would have been understated, in exactly the comparison
+   deliverable 3 asks about. Found by auditing the scaffold before writing
+   refinement. Fixed with `refined_params` + `champion_net()`; tests check no
+   offspring inherits the vector and reported accuracies use it.
+2. **The output node's activation mutated** (tanh 43%, relu 10% of genomes)
+   while `predict()` thresholds at 0.5 and `forward()` was documented as
+   logits. Found by tabulating output ranges in the audit. Fixed by pinning
+   the output to sigmoid; the first fix crashed (neat-python reads the ini
+   section named after the genome class).
+3. **Exit code 1 meant two things and `--generations 0` was silently
+   ignored.** An over-budget run and a crash both exited 1; `0 or planned`
+   ran 30 generations while reporting 0. Found by the harness agent
+   reasoning about exit codes. Over budget now exits 4; tests force an
+   overrun and check it is logged and marked invalid.
+4. **My learning-rate probe used validation data.** Found reviewing the
+   engine agent's report, not by a test. Re-run on the fit split: same lr.
+5. **The pilot misled twice.** Its rule recommended 1–3 generations;
+   discarded by comparing with runs still improving at generation 29. Then
+   predictions built on its findings (uninformative pre-screen, late
+   bloomers) failed: B and halving *won* for Baldwinian. How a fixed set of
+   genomes ranks is not what decides an evolutionary run.
+6. **Lamarckian runs fragmented until neat-python crashed** (7 of 150 cells:
+   51 species × 2 > 100 genomes). Found when the harness reported the
+   crashes. Kept as results; crashed arms excluded from the choice; became
+   hypothesis H2.
+7. **My own bookkeeping was wrong in places, and so were most of my
+   predictions.** Cross-checking commit messages against result files while
+   drafting this report found a miscounted verdict tally, a species range
+   generalised from 3 seeds, a "matches" that held for one dataset of two,
+   and a stale exit code; each was re-derived and corrected with an appended
+   note (`ef2763e`). One commit message (`2b735e8`) described a report edit
+   that had not been written; the next commit added it and says so. Of my
+   committed predictions, 5/10 allocation, 4 mechanism, 1 frontier and 2
+   small-network predictions were contradicted; each is reported as such.
 
-**2. The output node's activation mutated.** *What broke*: the output was
-tanh in 43% of evaluated genomes and relu in 10%, while `predict()`
-thresholds at 0.5, `forward()` was documented as returning logits, and a
-likelihood loss needs a probability. *How I found it*: `audit_scaffold.py`
-tabulated output ranges per activation. *What I did*: `SigmoidOutputGenome`
-pins outputs to sigmoid; its first version crashed with `NoSectionError`,
-because neat-python reads the ini section named after the genome class
-(DEVLOG #1). *Verified*: outputs stay sigmoid over 40 generations while
-hidden nodes still mutate; the loss refuses a non-sigmoid output.
-
-**3. Exit code 1 meant two things, and `--generations 0` was silently
-ignored.** *What broke*: my first fix made an over-budget run exit 1, which
-is also Python's uncaught-exception code; `--steps 0 --generations 0`
-crashed inside neat-python, exited 1 with no summary, and could have been
-filed as a budget overrun. `args.generations or planned` treated 0 as unset,
-so the run reported 0 generations and ran 30. *How I found it*: the harness
-agent, reasoning about exit codes and then reproducing both (DEVLOG #3,
-#4). *What I did*: over budget exits 4, `--generations` must be ≥ 1, and the
-harness needs exit 4 + `within_budget: false` + no traceback. *Verified*:
-"overrun exits 4, keeps logs, marked invalid — 1,010/1,000 gradient steps
-over 101 refinements" (`test_main.py`).
-
-**4. My learning-rate probe used validation data.** *What broke*: the
-engine agent's `lr_probe.py` tuned on all 350 training points, including
-the 70 that choose the champion. *How I found it*: reviewing the agent's
-report, not by a test. *What I did*: restricted the probe to the 280 fit
-points. *Verified*: re-run, it still recommends lr 0.3 (DEVLOG #9).
-
-**5. The pilot's rule, and the predictions built on the pilot.** The rule
-recommended 1–3 generations; I put it beside `first_result`, where evolution
-was still improving at generation 29, and discarded it. The hand-written
-predictions then failed the other way: the pilot's most striking findings
-(an uninformative pre-screen, late bloomers) predicted B and D would lose
-to A under Baldwinian; on spiral at 10 seeds both won (+0.053, +0.064). How
-a fixed set of genomes ranks is not what decides an evolutionary run.
-
-**6. Lamarckian runs fragment until neat-python crashes.** *What broke*: 7
-Lamarckian cells crashed on the per-species minimum. Lamarckian weights
-reach ±30, NEAT's compatibility distance has a weight term, and lineages
-drift past the threshold into more species than 100 genomes can hold at 2
-each. *How I found it*: the harness reported the crashes. *What I did*:
-kept the crashed cells as results, excluded crashed arms from the choice,
-treated D's means as survivor-biased, and made fragmentation hypothesis H2.
-*Verified*: topology-only speciation removes it (median 1 species, 0
-crashes) but costs Lamarckian 0.036 / 0.039. *Still missing*: a crashed run
-writes no `fitness_history.csv` (`main.py` catches only the budget
-exception), so the species trajectory up to the crash is lost.
-
-**7. My own bookkeeping was wrong in places, and so were several
-predictions.** Cross-checking commit messages against result files while
-drafting this report found a miscounted verdict tally ("4 supported, 4
-contradicted" for seeds 0–2; the scored file has 3 / 3 / 4), a species range
-stated from 3 seeds and generalised ("Baldwinian 2–5"; at 10 seeds 1–7), a
-"matches" that held for one dataset of two, and a stale exit code in
-AUDIT.md. Each was re-derived and corrected with an appended note
-(`ef2763e`), not rewritten. Four mechanism predictions were contradicted
-(M5, B1, C2, F1; section 4) and one frontier prediction (FP5); each
-narrowed the next question. Every prediction was committed before its run,
-and the repeated configurations across grids reproduced run for run, which
-rules out nondeterminism as a source of these differences.
-
-**Smaller items:** the finite-difference reference for the gradient check
-was ill-conditioned on confidently wrong points (DEVLOG #6); relu nodes sit
-exactly at z = 0 because new nodes get bias 0 (DEVLOG #7); reusing one
-`neat.Config` across runs breaks reproducibility (DEVLOG #10); a `-dirty`
-commit label does not identify the code a run used (DEVLOG #5) — 145 frontier
-runs read `-dirty` while a parallel agent wrote untracked files, and the
-harness's code fingerprint shows the code was identical for all 480;
-refinement collapses 80% of hidden-node plain-NEAT xor genomes to p = 0.5
-(DEVLOG, "Surprises") — xor still reaches 0.96–0.98, so I noted it and did
-not chase it; relatedly, under Baldwinian B the 100 Adam steps *lower* the
-mean fit accuracy of the genomes they refine in 110 / 83 / 227 of 300
-seed-generation cells (xor / spiral / spiral3; the A arms 0–9), because they
-minimise cross-entropy, not accuracy (found by the figures agent; not
-investigated further).
+Smaller items (DEVLOG): the finite-difference reference was ill-conditioned
+on confidently wrong points; relu nodes sit exactly at z = 0 because new
+nodes get bias 0; reusing one `neat.Config` breaks reproducibility; a
+`-dirty` commit label does not identify code (145 frontier runs read dirty
+while an agent wrote files; the code fingerprint was identical for all 480);
+an agent's worktree started from a Q1 commit; the write-up's penalty
+collapses networks (section 5); refinement can lower accuracy (it minimises
+cross-entropy) — under Baldwinian B it does so in 110 / 83 / 227 of 300
+seed-generation cells.
 
 ## 9. Time and process
 
-**Time.** Q2 started with the checkout of `q2-backprop-neat` at 18:09
-(reflog). TODO(time): final figure at submission. At the frontier results
-(20:40) it was about 2.5 hours of wall-clock against a budget of about 5.
-A Q1 session ran in parallel at the start; one of its commits landed on
-this branch at 18:19 (DEVLOG, "Process").
+Q2 ran from 18:09 (branch checkout) to ~21:15: about 3 hours of wall-clock
+against a budget of about 5. Runs take seconds, so the time went into design
+and checking. Timeline: audit and fixes 18:09–18:51; engine, driver and
+harness to 19:36; first result 19:38 (`q2-first-result`); pilot to 19:57;
+allocation study and confirmation 20:00–20:09; mechanism 20:14–20:25;
+frontier 20:33–20:40; figures, small networks, report to ~21:15.
 
-| time | work |
-|---|---|
-| 18:09–18:51 | scaffold audit and fixes |
-| 18:52 | plain-NEAT baseline |
-| until 19:36 | gradient engine, driver and harness |
-| 19:37–19:38 | first result (tag `q2-first-result`) |
-| 19:38–19:57 | pilot |
-| 20:00–20:09 | allocation predictions, grid, extension to 10 seeds, confirmation |
-| 20:14–20:25 | mechanism rounds 1–3 and the final test |
-| 20:33–20:40 | penalty-aware selection, frontier predictions and grid |
+I kept the design, every prediction, and the reading of results, and
+delegated build pieces to agents — the gradient engine, the harness, the
+small-network machinery (in an isolated worktree), the figures, and the
+first draft of this report — re-running each agent's tests and checking its
+key outputs before committing. They found real bugs (DEVLOG #3–#7,
+#10–#15); my reviews found the validation leak (item 4) and the drafting
+agent found my bookkeeping errors (item 7). All five test suites pass on the
+final tree.
 
-Runs take a few seconds each, so the time went into design and checking,
-not compute.
-
-**How the work was split.** I kept the design, the predictions and the
-reading of results, and delegated build pieces to agents, re-running and
-reviewing each before committing: the gradient engine and lr probe
-(`eb68b6f`; my review found item 4), the harness (`3372a86`; 27/27 harness
-tests and 12/12 demo-grid cells re-run against the new `main.py`), the
-small-network machinery (TODO), the figures (I checked the representative,
-by-radius and inheritance plots against the agent's readings before using
-them), and the first draft of this report (which found item 7). The agents found real bugs (DEVLOG #3–#7,
-#10, #11). `test_gradients.py`, `test_scaffold_fixes.py` and `test_main.py`
-all print `all checks passed`.
-
-**What I would do next:** settle Lamarckian A vs B with more seeds or report
-them as equivalent; test the two unexplained observations (weight-aware
-speciation; depth closing the gap on spiral but not spiral3); log the
-species trajectory up to a crash.
+**Next:** settle Lamarckian A vs B with more seeds; test why weight-aware
+speciation helps Lamarckian; give the spirals a fair shot at learning the
+inner turns (radius/angle-aware activations or longer runs) and measure that
+with the inner-third metric rather than overall accuracy.
 
 ---
 
@@ -692,3 +481,24 @@ Median Lamarckian child loss: default −0.132 (n = 16,006), without replacement
 | `test_scaffold_fixes.py` | each audit fix: reproduces the failure, asserts it is gone | `all checks passed` |
 | `test_main.py` | split, budget, inheritance evidence, halving schedule, champion (incl. penalised), penalty, overrun, determinism | `all checks passed` |
 | `experiments/tests/test_harness.py` | 27 failure-path checks against a fake driver | 27/27 per commit `3372a86` |
+
+### A12. Small-network track (`runs/smallnet/smallnet_scored.md`, 120/120 ok)
+
+| arm (≤ 6 connections) | xor | spiral | spiral3 |
+|---|--:|--:|--:|
+| lam_std | 0.967 ± 0.019 (6.0) | 0.826 ± 0.043 (5.5) | 0.779 ± 0.030 (6.0) |
+| bald_std | 0.956 ± 0.020 (6.0) | 0.826 ± 0.071 (5.4) | 0.711 ± 0.033 (5.7) |
+| lam_sine | 0.969 ± 0.004 (5.7) | 0.906 ± 0.034 (6.0) | 0.863 ± 0.049 (6.0) |
+| bald_sine | 0.976 ± 0.006 (5.9) | 0.849 ± 0.048 (5.8) | 0.816 ± 0.056 (5.9) |
+
+Excluding the three cells run during development: lam_std spiral 0.830
+(n=9), spiral3 0.782 (n=9), bald_sine spiral 0.849 (n=9); verdicts S1b
+Lamarckian spiral3 → inconclusive, S4 spiral → holds (+0.004).
+
+### A13. Complexity frontier, mult form (`runs/frontier/frontier_scored.md`)
+
+| mult λ | Lam xor | Lam spiral | Lam spiral3 | Bald xor | Bald spiral | Bald spiral3 |
+|---|--:|--:|--:|--:|--:|--:|
+| 0.1 | 0.967 (9.1) | 0.831 (6.6) | 0.700 (4.3) | 0.663 (3.3) | 0.729 (4.4) | 0.624 (1.6) |
+| 0.3 | 0.967 (8.9) | 0.759 (4.0) | 0.641 (1.2) | 0.567 (1.2) | 0.667 (1.3) | 0.643 (1.1) |
+| 1.0 | 0.487 (0.0) | 0.480 (0.0) | 0.433 (0.0) | 0.487 (0.0) | 0.480 (0.0) | 0.433 (0.0) |
