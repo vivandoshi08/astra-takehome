@@ -1,4 +1,4 @@
-# Run analysis: `runs/full100m_curriculum_s0`
+# Run analysis: `/Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q1-fix-replication/q1_slimevolley/runs/full100m_curriculum_s0`
 
 Counts: PASS 57, WARN 6, INFO 15
 
@@ -35,8 +35,8 @@ Counts: PASS 57, WARN 6, INFO 15
 | 2. Fitness consistency: champion_val is the running max of val_mean | consistent | **PASS** |
 | 2. Fitness consistency: champion.json is the argmax of val_mean | consistent | **PASS** |
 | 3. Seed hygiene: seed ranges disjoint | all three ranges disjoint | **PASS** |
-| 4. Seed difficulty confound: elite delta (individual) | seed noise sd per genome = 1.947 fitness units | **INFO** |
-| 4. Seed difficulty confound: seed noise vs best_fitness movement | 68.0% of best-fitness jitter is matched by seed shifts; r^2 = share of dB variance explained by seed difficulty | **WARN** |
+| 4. Seed difficulty confound: elite delta (individual) | seed noise sd per genome = 1.416 fitness units | **INFO** |
+| 4. Seed difficulty confound: seed noise vs best_fitness movement | max r^2 = 0.424: seed difficulty explains up to 42.4% of generation-to-generation movement in best fitness | **WARN** |
 | 5. Winner's curse (train vs validation): train raw - val_mean over validated genomes | mean gap 0.146, 95% CI [0.102, 0.191] (positive = training overstates) | **WARN** |
 | 5. Winner's curse (train vs validation): champion train raw vs val | gap -0.350 | **INFO** |
 | 6. Validation noise: champion val_mean 95% CI | -0.050 +- 0.467  [-0.517, 0.417] | **PASS** |
@@ -85,7 +85,7 @@ Counts: PASS 57, WARN 6, INFO 15
 
 Plots: fitness_curve.png, seed_noise.png, behavior.png, complexity.png, contacts.png
 
-# analyze_run: runs/full100m_curriculum_s0
+# analyze_run: /Users/vivandoshi/Documents/astra-takehome 3/.claude/worktrees/q1-fix-replication/q1_slimevolley/runs/full100m_curriculum_s0
 - run_args.json: present
 - budget_log.jsonl: 86260 rows
 - fitness_history.csv: 227 rows
@@ -299,14 +299,14 @@ survival bonus B = 0.3, return bonus R = 0.07 (run_args; missing = 0); raw_fitne
 
 ### [INFO] elite delta (individual)
 - formula:   delta_k,g = fitness_g(k) - fitness_{g-1}(k) for keys in both gens; genome unchanged, so delta is pure seed/episode noise
-- numbers:   n = 1330 pairs over 226 gens; mean = -0.3843; sd = 1.9475
-- result:    seed noise sd per genome = 1.947 fitness units
+- numbers:   n = 1324 pairs over 225 gens; mean = -0.2947; sd = 1.4155
+- result:    seed noise sd per genome = 1.416 fitness units
 
 ### [WARN] seed noise vs best_fitness movement
-- formula:   D_g = mean_k delta_k,g (generation's seed-difficulty shift); dB_g = best_g - best_{g-1}; ratio = sd(D) / sd(dB); r = corr(D, dB)
-- numbers:   226 gens; sd(D) = 1.4982; sd(dB) = 2.2044; ratio = 0.680; r = 0.757 (r^2 = 0.573)
-- result:    68.0% of best-fitness jitter is matched by seed shifts; r^2 = share of dB variance explained by seed difficulty
-- threshold: WARN if ratio >= 0.5 (generation-to-generation best_fitness mostly tracks which seeds were drawn)
+- formula:   within each phase (pairs across a phase switch excluded): D_g = mean_k delta_k,g (generation's seed-difficulty shift); dB_g = best_g - best_{g-1}; r = corr(D, dB); r^2 = share of dB variance linearly explained by D (association, not causation)
+- numbers:   phase 1: 115 gens, r = 0.322, r^2 = 0.103, sd(D)/sd(dB) = 0.414; phase 2: 110 gens, r = 0.651, r^2 = 0.424, sd(D)/sd(dB) = 0.769
+- result:    max r^2 = 0.424: seed difficulty explains up to 42.4% of generation-to-generation movement in best fitness
+- threshold: WARN if r^2 >= 0.25 in any phase
 
 
 ## 5. Winner's curse (train vs validation)

@@ -89,7 +89,7 @@ def run_episode(net, env) -> EpisodeStats:
     done = False
     while not done:
         out = net.activate(net_inputs(net, obs))
-        action = action_from_outputs(out)
+        action = policy_action(net, out)
         before = _CONTACTS[1], _CONTACTS[-1]
         x_before = env.game.agent_right.x
         obs, reward, done, _ = env.step(action)
@@ -150,11 +150,37 @@ def net_inputs(net, obs):
     return obs
 
 
-def action_from_outputs(out) -> list[int]:
-    """Three outputs -> MultiBinary(3) [forward, backward, jump], each on if > 0.5.
+MAPPINGS = ("threshold", "signed", "direction")
 
-    neat_config.ini keeps every node sigmoid (activation_mutate_rate = 0), so
-    0.5 is the midpoint of every output. Must stay in sync with
-    `replay.action_from()`, which imports this.
+
+def policy_action(net, out) -> list[int]:
+    """Action for a network's outputs, using the mapping its config declares
+    (evolve.make_net attaches it; hand-written policies get 'threshold')."""
+    return action_from_outputs(out, getattr(net, "action_mapping", "threshold"))
+
+
+def action_from_outputs(out, mapping: str = "threshold") -> list[int]:
+    """Network outputs -> MultiBinary(3) [forward, backward, jump].
+
+    threshold (3 outputs, the original): each button on if its output > 0.5.
+        Forward and backward can both be on, which cancels to no movement —
+        and a net-camper with forward stuck on cannot move back at all, so a
+        ball-tracking signal on 'backward' does nothing until 'forward' is
+        separately gated (a two-mutation valley; see report).
+    signed (3 outputs): move by the sign of forward - backward, with a 0.1 dead
+        zone; jump if output 2 > 0.5. Both high no longer locks movement unless
+        they are within 0.1 of each other.
+    direction (2 outputs): output 0 alone sets movement — > 2/3 forward,
+        < 1/3 backward, else stay; jump if output 1 > 0.5. Tracking pushes the
+        same output that 'forward always on' pushes, so it counteracts it
+        directly and partial tracking already moves the agent.
+    All outputs are sigmoid (activation_mutate_rate = 0), range (0, 1).
     """
-    return [1 if o > 0.5 else 0 for o in out]
+    if mapping == "threshold":
+        return [1 if o > 0.5 else 0 for o in out]
+    if mapping == "signed":
+        d = out[0] - out[1]
+        return [int(d > 0.1), int(d < -0.1), int(out[2] > 0.5)]
+    if mapping == "direction":
+        return [int(out[0] > 2 / 3), int(out[0] < 1 / 3), int(out[1] > 0.5)]
+    raise ValueError(f"unknown action mapping {mapping!r}; expected one of {MAPPINGS}")

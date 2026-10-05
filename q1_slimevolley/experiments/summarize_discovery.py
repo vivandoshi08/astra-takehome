@@ -56,6 +56,11 @@ def summarize(run: Path) -> dict | None:
 
 
 def main() -> int:
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--arms", nargs="+", default=ARMS)
+    ap.add_argument("--out", default="discovery_results.md")
+    args = ap.parse_args()
     runs = HERE / "runs"
     print(f"{'run':24s} {'gens':>4s} {'steps':>6s} {'cont end/peak':>13s} {'best fit':>8s} "
           f"{'champ val':>9s} {'|w bx-x| champ/genbest':>22s} {'species':>7s}  discovered")
@@ -63,7 +68,7 @@ def main() -> int:
              "| tracking weight champ / gen-best | mean species | discovered |",
              "|---|---|---|---|---|---|---|---|---|"]
     tally = {}
-    for arm in ARMS:
+    for arm in args.arms:
         for seed in (10, 11, 12):
             s = summarize(runs / f"dh_{arm}_s{seed}")
             if s is None:
@@ -82,7 +87,7 @@ def main() -> int:
     print("\nDiscovered (peak mean contacts >= 5) per arm, finished runs:")
     for arm, found in tally.items():
         print(f"  {arm:11s} {sum(found)}/{len(found)}")
-    (HERE / "experiments" / "discovery_results.md").write_text(
+    (HERE / "experiments" / args.out).write_text(
         "# Discovery hypotheses: results\n\n" + "\n".join(lines) + "\n\n"
         + "\n".join(f"- {arm}: {sum(f)}/{len(f)} discovered" for arm, f in tally.items()) + "\n")
     return 0

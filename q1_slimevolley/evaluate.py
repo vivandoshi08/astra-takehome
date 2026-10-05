@@ -59,7 +59,8 @@ def summarize(scores: list[float], boot: int = 10_000) -> dict:
         "mean": mean,
         "sd": sd,
         "ci95_t": [mean - half, mean + half],
-        "ci95_bootstrap": [means[int(0.025 * boot)], means[int(0.975 * boot) - 1]],
+        # k-th order statistics (1-based) k = 0.025*B and 0.975*B -> 0-based indices k-1
+        "ci95_bootstrap": [means[int(0.025 * boot) - 1], means[int(0.975 * boot) - 1]],
         "wins": sum(s > 0 for s in scores),
         "draws": sum(s == 0 for s in scores),
         "losses": sum(s < 0 for s in scores),

@@ -34,8 +34,8 @@ import neat
 from PIL import Image, ImageDraw, ImageFont
 
 import slimevolley as sv
-from episode import _CONTACTS, action_from_outputs, net_inputs, run_episode
-from evolve import make_net
+from episode import _CONTACTS, net_inputs, policy_action, run_episode
+from evolve import load_config, make_net
 
 HERE = Path(__file__).parent
 
@@ -59,7 +59,7 @@ except TypeError:            # Pillow < 10.1 has no size argument
 
 def action_from(net, obs) -> list[int]:
     """Network outputs -> a MultiBinary(3) action. Edit to match your own."""
-    return action_from_outputs(net.activate(net_inputs(net, obs)))
+    return policy_action(net, net.activate(net_inputs(net, obs)))
 
 
 def _px(wx: float, wy: float) -> tuple[float, float]:
@@ -182,9 +182,7 @@ def main() -> int:
     run_config = Path(args.winner).parent / "config.ini"
     config_path = run_config if run_config.exists() else Path(args.config)
     print(f"config: {config_path}")
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         str(config_path))
+    config = load_config(config_path)
     with open(args.winner, "rb") as fh:
         blob = pickle.load(fh)
     genome = blob["genome"] if isinstance(blob, dict) else blob

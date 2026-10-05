@@ -18,7 +18,7 @@ score + B * steps/3000. Against this opponent ~90% of early games are 5-0
 losses and the few points won are mostly decided by the serve, so raw score
 gives selection almost nothing to work with; time survived does vary and
 correlates with score. With B < 1 a point always outweighs any amount of
-survival. The champion is still chosen on raw validation score, and every
+survival *within one game*. The champion is still chosen on raw validation score, and every
 reported number is raw score.
 
 --return-bonus R adds R per *return* (our contact after which the ball reaches
@@ -26,7 +26,11 @@ the opponent's half), counting at most --return-cap returns per episode, to
 each episode's selection fitness. The cap matters: winning points ends the
 game sooner, so an uncapped bonus would pay a 0-0 rally to the time limit
 more than a quick 5-0 win. B + R*cap must be < 1 so one point always
-outweighs all shaping combined. Survival alone was
+outweighs all shaping combined *within one game*. Fitness is a mean over
+--episodes games, so one extra point is worth 1/episodes there and shaping
+can still reorder genomes whose raw means differ slightly (~2% of phase-2
+pairs in the full runs); the champion is chosen on raw score regardless.
+Survival alone was
 too weak (~0.7% of fitness variance) and raw contacts don't track score
 (r = 0.05; a genome can juggle on its own side and still lose 5-0), whereas
 returning the ball is the thing that has to happen before any point is won.
@@ -46,6 +50,7 @@ Writes to runs/<run-id>/ — see LOGS.md for every file and column.
 from __future__ import annotations
 
 import argparse
+import configparser
 import copy
 import csv
 import json
@@ -67,7 +72,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import slimevolley  # noqa: E402
 from budget import BudgetExhausted, BudgetedEnv, StepBudget, total_steps  # noqa: E402
-from episode import run_episode  # noqa: E402
+from episode import MAPPINGS, run_episode  # noqa: E402
 
 HERE = Path(__file__).parent
 TRAIN_SEED_LIMIT = 1_000_000  # training seeds are drawn from [0, TRAIN_SEED_LIMIT)
@@ -114,8 +119,19 @@ def _init_worker(run_dir: str, config_path: str, per_process_cap: int) -> None:
 
 
 def load_config(path) -> neat.Config:
-    return neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                       neat.DefaultSpeciesSet, neat.DefaultStagnation, str(path))
+    """NEAT config plus our [Action] section (mapping; default 'threshold')."""
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation, str(path))
+    parser = configparser.ConfigParser()
+    parser.read(path)
+    mapping = parser.get("Action", "mapping", fallback="threshold")
+    if mapping not in MAPPINGS:
+        raise ValueError(f"{path}: [Action] mapping {mapping!r} not in {MAPPINGS}")
+    want_outputs = 2 if mapping == "direction" else 3
+    if config.genome_config.num_outputs != want_outputs:
+        raise ValueError(f"{path}: mapping {mapping!r} needs num_outputs = {want_outputs}")
+    config.action_mapping = mapping
+    return config
 
 
 def make_net(genome, config):
@@ -125,8 +141,11 @@ def make_net(genome, config):
     step with whatever you put in neat_config.ini.
     """
     if config.genome_config.feed_forward:
-        return neat.nn.FeedForwardNetwork.create(genome, config)
-    return neat.nn.RecurrentNetwork.create(genome, config)
+        net = neat.nn.FeedForwardNetwork.create(genome, config)
+    else:
+        net = neat.nn.RecurrentNetwork.create(genome, config)
+    net.action_mapping = getattr(config, "action_mapping", "threshold")
+    return net
 
 
 def train_seeds(run_seed: int, generation: int, n: int) -> list[int]:
