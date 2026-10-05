@@ -1,0 +1,50 @@
+{
+  "name": "confirm",
+  "datasets": [
+    "xor",
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    10,
+    11,
+    12
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "A_lamarckian",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--strategy": "lamarckian"
+      }
+    },
+    {
+      "name": "A_baldwinian",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--strategy": "baldwinian"
+      }
+    },
+    {
+      "name": "B_lamarckian",
+      "args": {
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--strategy": "lamarckian"
+      }
+    },
+    {
+      "name": "B_baldwinian",
+      "args": {
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--strategy": "baldwinian"
+      }
+    }
+  ]
+}
