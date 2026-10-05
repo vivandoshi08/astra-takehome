@@ -1,5 +1,18 @@
 # Lamarckian vs Baldwinian — what the mechanism work established
 
+> **Post-merge audit corrections (DEVLOG #19–#21).** By the pre-committed
+> refutation rules, H1 is refuted as stated (M5 failed) and H5 is refuted as
+> stated (F1 failed: 0.025 < 0.03); H2 is *not* refuted by its rule (the
+> advantage stayed within 0.5–1.5x) and Lamarckian's ~4-point drop without
+> weight-aware speciation is within seed spread. The like-for-like head
+> start is 9–10 points (children's unrefined accuracy 0.596 vs 0.507), not
+> ~5. The depth arms also differ in wasted Baldwinian elite refinement
+> (5–53% of steps) and in selection on raw weights, so depth alone is not
+> established. Adam restarts each generation, so re-refining a Lamarckian
+> elite often lowers its accuracy. Rounds 2–3 and the final test went beyond
+> the single follow-up committed in PREDICTIONS_mechanism.md (each was still
+> pre-registered). The text below is the pre-audit summary.
+
 Each round's predictions were committed before it ran (PREDICTIONS_*.md);
 verdicts below are by those pre-committed rules. Held-out accuracy,
 spirals; xor is at its ceiling under every condition.

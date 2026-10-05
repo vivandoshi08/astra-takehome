@@ -4,7 +4,7 @@
 
 Reads the grid's results.csv (ok cells only), prints a held-out table per
 dataset x strategy x arm, then each prediction's verdict by the rule fixed
-in PREDICTIONS_allocation.md. Writes runs/allocation/predictions_scored.md.
+in PREDICTIONS_allocation.md. Writes runs/allocation/predictions_scored[_seedsA-B].md.
 """
 
 from __future__ import annotations

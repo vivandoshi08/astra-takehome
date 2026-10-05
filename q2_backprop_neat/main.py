@@ -95,7 +95,7 @@ NEAT_STOP_EXIT = 5   # neat-python stopped the run before the last generation
 
 HISTORY_COLUMNS = [
     "generation", "best_fitness", "mean_fitness",          # scaffold
-    "best_pre_acc", "mean_pre_acc", "mean_acc",             # fit split, before / after refinement
+    "best_pre_acc", "mean_pre_acc", "mean_acc",             # fit split: population max / mean before, mean after refinement
     "mean_gain_refined",                                    # mean (after - before) over refined genomes
     "n_refined", "gen_steps", "cum_steps",
     "n_species", "best_conns", "mean_conns",
