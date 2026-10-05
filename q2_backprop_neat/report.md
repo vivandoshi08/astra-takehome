@@ -310,19 +310,23 @@ on confidently wrong points; relu nodes sit exactly at z = 0 because new
 nodes get bias 0; reusing one `neat.Config` breaks reproducibility; a
 `-dirty` commit label does not identify code (145 frontier runs read dirty
 while an agent wrote files; the code fingerprint was identical for all 480);
-an agent's worktree started from a Q1 commit; the write-up's penalty
+an agent's worktree started from a Q1 commit; `package_submission.sh`
+falsely warns that Q2 has no `fitness_history.csv` (its `find | grep -q`
+under `pipefail` fails on SIGPIPE when there are many files — DEVLOG #16;
+the files are there); the write-up's penalty
 collapses networks (section 5); refinement can lower accuracy (it minimises
 cross-entropy) — under Baldwinian B it does so in 110 / 83 / 227 of 300
 seed-generation cells.
 
 ## 9. Time and process
 
-Q2 ran from 18:09 (branch checkout) to ~21:15: about 3 hours of wall-clock
-against a budget of about 5. Runs take seconds, so the time went into design
+Q2 ran from 18:09 (branch checkout) to 21:20: about 3 h 10 min of
+wall-clock against a budget of about 5. Runs take seconds, so the time went into design
 and checking. Timeline: audit and fixes 18:09–18:51; engine, driver and
 harness to 19:36; first result 19:38 (`q2-first-result`); pilot to 19:57;
 allocation study and confirmation 20:00–20:09; mechanism 20:14–20:25;
-frontier 20:33–20:40; figures, small networks, report to ~21:15.
+frontier 20:33–20:40; figures, small networks, report and final checks
+to 21:20.
 
 I kept the design, every prediction, and the reading of results, and
 delegated build pieces to agents — the gradient engine, the harness, the
