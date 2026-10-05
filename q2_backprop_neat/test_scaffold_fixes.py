@@ -22,6 +22,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 import main as driver  # noqa: E402
+from budget import StepBudget  # noqa: E402
 from datasets import get_dataset  # noqa: E402
 from network import GenomeNetwork, champion_net  # noqa: E402
 
@@ -87,8 +88,10 @@ def test_refined_params():
           np.array_equal(champion_net(g, CONFIG).get_params(), g.refined_params))
     check("GenomeNetwork alone does not",
           not np.array_equal(GenomeNetwork(g, CONFIG).get_params(), g.refined_params))
-    driver.evaluate_genome(g, CONFIG, X, Y)
-    check("evaluate_genome clears a stale vector", g.refined_params is None)
+    args = driver.build_parser().parse_args(["--steps", "0", "--generations", "1"])
+    ev = driver.Evaluator(args, CONFIG, X, Y, X[:0], Y[:0], StepBudget())
+    ev([(0, g)], CONFIG)
+    check("evaluation clears a stale vector", g.refined_params is None)
 
     # Every evaluation stores a vector; at the next evaluation only elites
     # (the same objects, carried over) may still hold one.
@@ -134,25 +137,13 @@ def test_cli(tmp):
             f"{tmp}/a", "--overwrite")
     check("--overwrite allows it", r.returncode == 0)
 
-    # Overrun: patch evaluate_genome to charge, then ask for more generations
-    # than a 1,000-step budget affords. The run must still write its logs.
-    code = (
-        "import sys; sys.argv = ['main.py', '--quiet', '--dataset', 'xor', "
-        "'--steps', '10', '--budget', '1000', '--generations', '3', "
-        f"'--run-id', '{tmp}/b']\n"
-        f"sys.path.insert(0, {str(HERE)!r})\n"
-        "import main\n"
-        "orig = main.evaluate_genome\n"
-        "def charging(genome, config, X, y, budget=None, steps=0):\n"
-        "    budget.charge(steps)\n"
-        "    return orig(genome, config, X, y, budget, steps)\n"
-        "main.evaluate_genome = charging\n"
-        "raise SystemExit(main.main())\n"
-    )
-    r = subprocess.run([PY, "-c", code], capture_output=True, text=True)
+    # Overrun: ask for more generations than a 1,000-step budget affords.
+    # The run must still write its logs.
+    r = cli("--dataset", "xor", "--steps", "10", "--budget", "1000", "--generations", "3",
+            "--strategy", "baldwinian", "--lr", "0.05", "--run-id", f"{tmp}/b")
     sb = json.loads(Path(f"{tmp}/b/summary.json").read_text())
-    check("a budget overrun exits 1, keeps its logs, and is marked invalid",
-          r.returncode == 1 and not sb["within_budget"] and sb["budget_error"]
+    check(f"a budget overrun exits {driver.BUDGET_EXIT}, keeps its logs, and is marked invalid",
+          r.returncode == driver.BUDGET_EXIT and not sb["within_budget"] and sb["budget_error"]
           and Path(f"{tmp}/b/fitness_history.csv").exists()
           and "WARNING" in r.stdout, sb["budget"])
 
