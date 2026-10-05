@@ -8,9 +8,13 @@ can get to the actual question. It gives you:
     theta  = net.get_params()        # flat float vector: weights then biases
     net.set_params(theta)            # load a vector back in
     net.write_back(genome)           # copy current params into the genome's genes
+    L      = net.loss(X, y)          # mean binary cross-entropy of forward(X) vs y
+    L, g   = net.loss_and_grad(X, y) # ... and dL/dtheta, in get_params() order
 
 `forward` is written against `self.weights` / `self.biases`, so you can
 differentiate through it however you like — autograd, torch, JAX, or by hand.
+`loss_and_grad` does it by hand (reverse mode over `eval_order`);
+test_gradients.py checks it against finite differences of forward().
 
 Feed-forward genomes only (the config ships with `feed_forward = True`).
 
@@ -48,6 +52,31 @@ def _act(name: str, x: np.ndarray) -> np.ndarray:
     if name == "identity":
         return x
     raise ValueError(f"unsupported activation {name!r} — see network.py")
+
+
+def _act_grad(name: str, x: np.ndarray) -> np.ndarray:
+    """d _act(name, x) / dx, elementwise.
+
+    sigmoid is flat outside (-60, 60) because _act clips there; relu takes
+    subgradient 0 at x <= 0. Written with exp(-|x|) so nothing overflows.
+    """
+    if name == "sigmoid":
+        e = np.exp(-np.abs(x))
+        return np.where(np.abs(x) < 60, e / (1.0 + e) ** 2, 0.0)
+    if name == "tanh":
+        e = np.exp(-2.0 * np.abs(x))
+        return 4.0 * e / (1.0 + e) ** 2
+    if name == "relu":
+        return (x > 0).astype(float)
+    if name == "identity":
+        return np.ones_like(x)
+    raise ValueError(f"unsupported activation {name!r} — see network.py")
+
+
+def _sigmoid(z: np.ndarray) -> np.ndarray:
+    """Unclipped logistic sigmoid, without overflow for any z."""
+    e = np.exp(-np.abs(z))
+    return np.where(z >= 0, 1.0, e) / (1.0 + e)
 
 
 class GenomeNetwork:
@@ -142,6 +171,88 @@ class GenomeNetwork:
 
     def accuracy(self, X: np.ndarray, y: np.ndarray) -> float:
         return float((self.predict(X) == np.asarray(y)).mean())
+
+    # ---- loss and gradient ------------------------------------------------
+    # The loss is mean binary cross-entropy, computed from the output node's
+    # pre-activation z as mean(softplus(z) - y*z): exact for every z, where
+    # log(forward(X)) would round to log(0). forward() clips z to +-60 inside
+    # its sigmoid; the loss does not, so it keeps a gradient on a point the
+    # network is confidently wrong about. Below |z| = 60 the two agree exactly.
+
+    def _output_key(self):
+        out = self.output_keys[0]
+        if out not in self._bias_ix:
+            raise ValueError(f"output node {out} is not in eval_order, so "
+                             "forward() returns 0 for every point; no loss")
+        act = self.activations[self._bias_ix[out]]
+        if act != "sigmoid":
+            raise ValueError(f"the loss needs a sigmoid output node, got {act!r}: "
+                             "build configs with load_config() (SigmoidOutputGenome)")
+        return out
+
+    def _pass(self, X: np.ndarray):
+        """forward(), keeping each node's pre-activation.
+
+        Same arithmetic as forward(). Returns (values, pre, live): `live[node]`
+        lists the incoming (connection index, source) pairs whose source had a
+        value when the node was evaluated; forward() reads any other source
+        as 0, so its weight gets no gradient.
+        """
+        X = np.atleast_2d(np.asarray(X, dtype=float))
+        values = {k: X[:, i] for i, k in enumerate(self.input_keys)}
+        pre, live = {}, {}
+        for node in self.eval_order:
+            j = self._bias_ix[node]
+            total = self.biases[j] * np.ones(len(X))
+            live[node] = [(ci, s) for ci, s in self._incoming[node] if s in values]
+            for ci, src in live[node]:
+                total = total + self.weights[ci] * values[src]
+            pre[node] = total
+            values[node] = _act(self.activations[j], total)
+        return values, pre, live
+
+    @staticmethod
+    def _bce(z: np.ndarray, y) -> tuple[float, np.ndarray]:
+        y = np.asarray(y, dtype=float)
+        if y.shape != z.shape:
+            raise ValueError(f"y has shape {y.shape}, expected {z.shape}")
+        return float(np.mean(np.logaddexp(0.0, z) - y * z)), y
+
+    def loss(self, X: np.ndarray, y: np.ndarray) -> float:
+        """Mean binary cross-entropy of forward(X) against labels y in {0, 1}."""
+        out = self._output_key()
+        _, pre, _ = self._pass(X)
+        return self._bce(pre[out], y)[0]
+
+    def loss_and_grad(self, X: np.ndarray, y: np.ndarray) -> tuple[float, np.ndarray]:
+        """(loss(X, y), its gradient w.r.t. get_params()), by reverse mode.
+
+        Parameters that cannot reach the output get exactly 0: connections
+        into nodes outside eval_order, and weights whose source forward()
+        reads as 0. Does not change the network's parameters.
+        """
+        out = self._output_key()
+        values, pre, live = self._pass(X)
+        z = pre[out]
+        loss, y = self._bce(z, y)
+
+        nw = len(self.weights)
+        grad = np.zeros(self.n_params)
+        adj = {}  # node -> dL/d(node's value), summed over the nodes it feeds
+        for node in reversed(self.eval_order):
+            j = self._bias_ix[node]
+            if node == out:
+                delta = (_sigmoid(z) - y) / len(z)  # dL/dz
+            elif node in adj:
+                delta = adj.pop(node) * _act_grad(self.activations[j], pre[node])
+            else:
+                continue  # feeds nothing that reaches the output
+            grad[nw + j] = delta.sum()
+            for ci, src in live[node]:
+                grad[ci] = delta @ values[src]
+                if src in self._bias_ix:  # a node, not an input
+                    adj[src] = adj.get(src, 0.0) + delta * self.weights[ci]
+        return loss, grad
 
 
 def complexity(genome) -> tuple[int, int]:
