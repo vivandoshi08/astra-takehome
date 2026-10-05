@@ -287,6 +287,45 @@ Response 1.0 matters: at 0.2 the tracking weight must reach ~20 instead of ~4.
 formula is **identical** to the old runs; only the action mapping and response
 changed, so no reward change can explain the gain.
 
+## Rule compliance
+
+Checked against README "Ground rules" and the Q1 section of QUESTIONS.md:
+
+- **Never edited (byte-identical to the original first commit `d23a4bd`):** all three
+  `budget.py` files, the environment `slimevolley.py`, `sanity_check.sh`,
+  `package_submission.sh`, `requirements.txt`, `README.md`, `QUESTIONS.md`, and every Q2
+  / Q3 file.
+- **Original Q1 files I did change, each one the task opens up:**
+  - `episode.py` ("the piece you implement"; `play_episode(net, env)` signature kept)
+  - `evolve.py` ("everything else is your call")
+  - `neat_config.ini` ("tuning it is fair game"; still 12 inputs, as `sanity_check.sh`
+    asserts)
+  - `replay.py` ("change it, or replace it")
+  - `report.md`
+- **Step budget:** recomputed from every committed `budget_log.jsonl` with the
+  scaffold's own rule (sum of each worker's latest count). All 55 committed runs are at
+  or under their budget; the maximum is 99,224,569 of 100M.
+- **Disclosures, so nothing is hidden:**
+  - **Contact counting wraps the env at runtime.** `episode.py` wraps
+    `Particle.bounce`, which still calls the original, and counts touches. The file is
+    not edited, and trajectories are byte-identical with and without the wrapper.
+  - **Steps outside the budget.** Held-out evaluation and analysis episodes
+    (`evaluate.py`, `behavior.py`, `reward_check.py`, `mapping_check.py`, replays) are
+    not charged to any run's budget. They train nothing and select nothing; the budget
+    governs training runs.
+  - **Held-out seeds were seen, never used to choose.** During development, held-out
+    seeds 1,000,000–1,000,019 (the first 20 of the 100) were used to *watch* snapshots
+    in replays and progress tables. No champion, config or mapping was chosen on them.
+    Choices used training logs, validation seeds or probe seeds (3e6+). The one time a
+    held-out comparison favoured a different champion (60M snapshot, old run), I didn't
+    switch.
+  - **Throwaway runs.** Short plumbing and smoke-test runs (≤ 3M steps) were deleted
+    without ever being committed.
+  - **The crashed run's original logs are kept.** It was reproduced for its traceback,
+    and its original logs are committed unaltered as
+    `runs/dh_h5species_s11_crashed_original` next to the rerun; the two are
+    byte-identical where they overlap.
+
 ## Anything surprising
 
 - **The failure was in the action interface, not the reward or the search
