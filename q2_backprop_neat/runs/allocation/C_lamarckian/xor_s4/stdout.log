@@ -1,0 +1,9 @@
+dataset xor | pop 100 | 50 steps/genome | refine 100% | 5000 steps/gen -> 6 generations within 30,000 steps | strategy lamarckian | fit 280 / val 70
+
+dataset          : xor
+generations      : 6
+budget           : 30,000/30,000 gradient steps over 600 refinements
+fit / val acc    : 0.979 / 0.971
+held-out accuracy: 0.987 (majority class 0.513)
+champion size    : 4 nodes, 7 enabled connections (generation 5)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/runs/allocation/C_lamarckian/xor_s4/

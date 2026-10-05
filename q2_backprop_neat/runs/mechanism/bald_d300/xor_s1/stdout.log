@@ -1,0 +1,9 @@
+dataset xor | pop 100 | 300 steps/genome | refine 3% | 900 steps/gen -> 30 generations within 30,000 steps | strategy baldwinian | fit 280 / val 70
+
+dataset          : xor
+generations      : 30
+budget           : 27,000/30,000 gradient steps over 90 refinements
+fit / val acc    : 0.911 / 0.957
+held-out accuracy: 0.940 (majority class 0.513)
+champion size    : 2 nodes, 5 enabled connections (generation 14)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/runs/mechanism/bald_d300/xor_s1/

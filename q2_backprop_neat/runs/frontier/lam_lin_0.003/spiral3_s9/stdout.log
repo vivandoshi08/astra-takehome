@@ -1,0 +1,9 @@
+dataset spiral3 | pop 100 | 10 steps/genome | refine 100% | 1000 steps/gen -> 30 generations within 30,000 steps | strategy lamarckian | fit 280 / val 70
+
+dataset          : spiral3
+generations      : 30
+budget           : 30,000/30,000 gradient steps over 3,000 refinements
+fit / val acc    : 0.768 / 0.771
+held-out accuracy: 0.753 (majority class 0.567)
+champion size    : 3 nodes, 6 enabled connections (generation 27)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/runs/frontier/lam_lin_0.003/spiral3_s9/

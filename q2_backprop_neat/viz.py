@@ -76,8 +76,7 @@ def plot_fitness(history_csv: str, out: str = "fitness.png") -> str:
 
 def main() -> int:
     from datasets import DATASETS, get_dataset
-    from network import GenomeNetwork, complexity
-    import neat
+    from network import champion_net, complexity, load_config
 
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dataset", choices=DATASETS, default="spiral")
@@ -86,15 +85,15 @@ def main() -> int:
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    champion = args.champion or f"runs/{args.dataset}/champion.pkl"
+    champion = args.champion or str(HERE / "runs" / args.dataset / "champion.pkl")
     out = args.out or f"boundary_{args.dataset}.png"
 
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         args.config)
+    config = load_config(args.config)
     with open(champion, "rb") as fh:
         genome = pickle.load(fh)
-    net = GenomeNetwork(genome, config)
+    # The network the champion's fitness was earned with: refined parameters
+    # if evaluation stored them (Baldwinian), else the genome's own weights.
+    net = champion_net(genome, config)
 
     X_train, y_train, X_test, y_test = get_dataset(args.dataset)
     nodes, conns = complexity(genome)
@@ -105,7 +104,12 @@ def main() -> int:
 
     hist = Path(champion).parent / "fitness_history.csv"
     if hist.exists():
-        print(f"wrote {plot_fitness(str(hist), out.replace('boundary', 'fitness'))}")
+        # As shipped this was out.replace('boundary', 'fitness'), which
+        # overwrote the boundary plot whenever --out lacked 'boundary'.
+        o = Path(out)
+        fit_out = (o.with_name(o.name.replace("boundary", "fitness"))
+                   if "boundary" in o.name else o.with_name(f"{o.stem}_fitness{o.suffix}"))
+        print(f"wrote {plot_fitness(str(hist), str(fit_out))}")
     return 0
 
 

@@ -1,0 +1,185 @@
+{
+  "name": "frontier",
+  "datasets": [
+    "xor",
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "lam_lin_0",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--penalty": 0.0,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "lam_lin_0.001",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--penalty": 0.001,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "lam_lin_0.003",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--penalty": 0.003,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "lam_lin_0.01",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--penalty": 0.01,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "lam_lin_0.03",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--penalty": 0.03,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "lam_mult_0.1",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--penalty": 0.1,
+        "--penalty-form": "mult"
+      }
+    },
+    {
+      "name": "lam_mult_0.3",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--penalty": 0.3,
+        "--penalty-form": "mult"
+      }
+    },
+    {
+      "name": "lam_mult_1",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--penalty": 1.0,
+        "--penalty-form": "mult"
+      }
+    },
+    {
+      "name": "bald_lin_0",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--penalty": 0.0,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "bald_lin_0.001",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--penalty": 0.001,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "bald_lin_0.003",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--penalty": 0.003,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "bald_lin_0.01",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--penalty": 0.01,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "bald_lin_0.03",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--penalty": 0.03,
+        "--penalty-form": "linear"
+      }
+    },
+    {
+      "name": "bald_mult_0.1",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--penalty": 0.1,
+        "--penalty-form": "mult"
+      }
+    },
+    {
+      "name": "bald_mult_0.3",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--penalty": 0.3,
+        "--penalty-form": "mult"
+      }
+    },
+    {
+      "name": "bald_mult_1",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--penalty": 1.0,
+        "--penalty-form": "mult"
+      }
+    }
+  ]
+}

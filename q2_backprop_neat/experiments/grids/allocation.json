@@ -1,0 +1,103 @@
+{
+  "name": "allocation",
+  "datasets": [
+    "xor",
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "A_lamarckian",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--strategy": "lamarckian"
+      }
+    },
+    {
+      "name": "A_baldwinian",
+      "args": {
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--strategy": "baldwinian"
+      }
+    },
+    {
+      "name": "B_lamarckian",
+      "args": {
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--strategy": "lamarckian"
+      }
+    },
+    {
+      "name": "B_baldwinian",
+      "args": {
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--strategy": "baldwinian"
+      }
+    },
+    {
+      "name": "C_lamarckian",
+      "args": {
+        "--steps": 50,
+        "--refine-fraction": 1.0,
+        "--strategy": "lamarckian"
+      }
+    },
+    {
+      "name": "C_baldwinian",
+      "args": {
+        "--steps": 50,
+        "--refine-fraction": 1.0,
+        "--strategy": "baldwinian"
+      }
+    },
+    {
+      "name": "D_lamarckian",
+      "args": {
+        "--allocation": "halving",
+        "--strategy": "lamarckian"
+      }
+    },
+    {
+      "name": "D_baldwinian",
+      "args": {
+        "--allocation": "halving",
+        "--strategy": "baldwinian"
+      }
+    },
+    {
+      "name": "E_lamarckian",
+      "args": {
+        "--steps": 5,
+        "--refine-fraction": 1.0,
+        "--strategy": "lamarckian"
+      }
+    },
+    {
+      "name": "E_baldwinian",
+      "args": {
+        "--steps": 5,
+        "--refine-fraction": 1.0,
+        "--strategy": "baldwinian"
+      }
+    }
+  ]
+}

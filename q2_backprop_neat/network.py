@@ -4,23 +4,53 @@ This is the rig, so you don't have to reimplement genome execution before you
 can get to the actual question. It gives you:
 
     net = GenomeNetwork(genome, config)
-    logits = net.forward(X)          # (N, 2) -> (N,)
+    p      = net.forward(X)          # (N, 2) -> (N,) output-node activation
     theta  = net.get_params()        # flat float vector: weights then biases
     net.set_params(theta)            # load a vector back in
     net.write_back(genome)           # copy current params into the genome's genes
+    L      = net.loss(X, y)          # mean binary cross-entropy of forward(X) vs y
+    L, g   = net.loss_and_grad(X, y) # ... and dL/dtheta, in get_params() order
 
 `forward` is written against `self.weights` / `self.biases`, so you can
 differentiate through it however you like — autograd, torch, JAX, or by hand.
+`loss_and_grad` does it by hand (reverse mode over `eval_order`);
+test_gradients.py checks it against finite differences of forward().
 
 Feed-forward genomes only (the config ships with `feed_forward = True`).
+
+Changes from the shipped rig (see audit_scaffold.py for the evidence):
+- `SigmoidOutputGenome` keeps the output node's activation at sigmoid. As
+  shipped it mutated to tanh/relu in about half of all genomes, while
+  `predict` thresholds at 0.5 and a likelihood loss needs a probability.
+- `write_back` clamps to the config's weight/bias range, the same range
+  `lower` / `upper` expose for refinement to project onto. As shipped, a value
+  past the range was stored and then snapped back on its first mutation.
+- `champion_net` rebuilds a genome's network with the parameters that earned
+  its fitness (`genome.refined_params`), so a Baldwinian champion is not
+  evaluated with the unrefined weights its genome still carries.
+
+Activations here are the plain functions (sigmoid(z), tanh(z), relu(z), z,
+sin(z), exp(-z^2)); neat-python's own `neat.nn` uses sigmoid(5z), tanh(2.5z),
+sin(5z) and exp(-5z^2), so never evaluate with `neat.nn`. neat-python only
+needs an activation's *name* (mutation picks among `activation_options`);
+'sin' and 'gauss' are both in its built-in registry.
+
+Small-network track (`load_config(path, max_conns=N)`): `MaxConnsGenome`
+repairs every genome it creates (new, crossover, mutation) down to at most N
+enabled connections. See `repair_to_max_conns` for the rule.
 """
 
 from __future__ import annotations
 
 import math
 
+import neat
 import numpy as np
 from neat.graphs import feed_forward_layers
+
+
+# gauss clips its input here before squaring (see _act).
+GAUSS_CLIP = 40.0
 
 
 def _act(name: str, x: np.ndarray) -> np.ndarray:
@@ -32,7 +62,46 @@ def _act(name: str, x: np.ndarray) -> np.ndarray:
         return np.maximum(x, 0.0)
     if name == "identity":
         return x
+    if name == "sin":
+        return np.sin(x)
+    if name == "gauss":
+        # Clipped only so x*x cannot overflow: exp(-x^2) is already exactly
+        # 0.0 for |x| > 27.3, so the clip at 40 changes no value.
+        c = np.clip(x, -GAUSS_CLIP, GAUSS_CLIP)
+        return np.exp(-c * c)
     raise ValueError(f"unsupported activation {name!r} — see network.py")
+
+
+def _act_grad(name: str, x: np.ndarray) -> np.ndarray:
+    """d _act(name, x) / dx, elementwise.
+
+    sigmoid is flat outside (-60, 60) because _act clips there; relu takes
+    subgradient 0 at x <= 0. Written with exp(-|x|) so nothing overflows.
+    gauss: -2x exp(-x^2), with the same clip as _act (the value there is
+    already 0, so no kink is visible).
+    """
+    if name == "sigmoid":
+        e = np.exp(-np.abs(x))
+        return np.where(np.abs(x) < 60, e / (1.0 + e) ** 2, 0.0)
+    if name == "tanh":
+        e = np.exp(-2.0 * np.abs(x))
+        return 4.0 * e / (1.0 + e) ** 2
+    if name == "relu":
+        return (x > 0).astype(float)
+    if name == "identity":
+        return np.ones_like(x)
+    if name == "sin":
+        return np.cos(x)
+    if name == "gauss":
+        c = np.clip(x, -GAUSS_CLIP, GAUSS_CLIP)
+        return -2.0 * c * np.exp(-c * c)
+    raise ValueError(f"unsupported activation {name!r} — see network.py")
+
+
+def _sigmoid(z: np.ndarray) -> np.ndarray:
+    """Unclipped logistic sigmoid, without overflow for any z."""
+    e = np.exp(-np.abs(z))
+    return np.where(z >= 0, 1.0, e) / (1.0 + e)
 
 
 class GenomeNetwork:
@@ -66,6 +135,14 @@ class GenomeNetwork:
             for n in self.node_keys
         }
 
+        # Per-parameter bounds, in get_params() order: the range NEAT's own
+        # mutation operators clamp to.
+        nw, nb = len(self.weights), len(self.biases)
+        self.lower = np.r_[np.full(nw, gc.weight_min_value),
+                           np.full(nb, gc.bias_min_value)]
+        self.upper = np.r_[np.full(nw, gc.weight_max_value),
+                           np.full(nb, gc.bias_max_value)]
+
     # ---- parameters -------------------------------------------------------
     @property
     def n_params(self) -> int:
@@ -81,16 +158,29 @@ class GenomeNetwork:
         k = len(self.weights)
         self.weights, self.biases = theta[:k].copy(), theta[k:].copy()
 
-    def write_back(self, genome) -> None:
-        """Copy current parameters back into the genome's genes."""
-        for k, w in zip(self.conns, self.weights):
-            genome.connections[k].weight = float(w)
-        for n, b in zip(self.node_keys, self.biases):
+    def write_back(self, genome) -> int:
+        """Copy current parameters back into the genome's genes.
+
+        Values are clamped to the config's weight/bias range. Returns how many
+        had to be clamped: anything but 0 means the genome now differs from
+        the network that was evaluated.
+        """
+        theta = self.get_params()
+        clipped = np.clip(theta, self.lower, self.upper)
+        k = len(self.weights)
+        for c, w in zip(self.conns, clipped[:k]):
+            genome.connections[c].weight = float(w)
+        for n, b in zip(self.node_keys, clipped[k:]):
             genome.nodes[n].bias = float(b)
+        return int((clipped != theta).sum())
 
     # ---- evaluation -------------------------------------------------------
     def forward(self, X: np.ndarray) -> np.ndarray:
-        """Logits for a batch of inputs. X is (N, 2); returns (N,)."""
+        """Output-node activation for a batch. X is (N, 2); returns (N,).
+
+        Not a logit: with a sigmoid output (SigmoidOutputGenome) it is
+        P(class 1), and `predict` thresholds it at 0.5.
+        """
         X = np.atleast_2d(np.asarray(X, dtype=float))
         values = {k: X[:, i] for i, k in enumerate(self.input_keys)}
         zeros = np.zeros(len(X))
@@ -107,9 +197,243 @@ class GenomeNetwork:
     def accuracy(self, X: np.ndarray, y: np.ndarray) -> float:
         return float((self.predict(X) == np.asarray(y)).mean())
 
+    # ---- loss and gradient ------------------------------------------------
+    # The loss is mean binary cross-entropy, computed from the output node's
+    # pre-activation z as mean(softplus(z) - y*z): exact for every z, where
+    # log(forward(X)) would round to log(0). forward() clips z to +-60 inside
+    # its sigmoid; the loss does not, so it keeps a gradient on a point the
+    # network is confidently wrong about. Below |z| = 60 the two agree exactly.
+
+    def _output_key(self):
+        out = self.output_keys[0]
+        if out not in self._bias_ix:
+            raise ValueError(f"output node {out} is not in eval_order, so "
+                             "forward() returns 0 for every point; no loss")
+        act = self.activations[self._bias_ix[out]]
+        if act != "sigmoid":
+            raise ValueError(f"the loss needs a sigmoid output node, got {act!r}: "
+                             "build configs with load_config() (SigmoidOutputGenome)")
+        return out
+
+    def _pass(self, X: np.ndarray):
+        """forward(), keeping each node's pre-activation.
+
+        Same arithmetic as forward(). Returns (values, pre, live): `live[node]`
+        lists the incoming (connection index, source) pairs whose source had a
+        value when the node was evaluated; forward() reads any other source
+        as 0, so its weight gets no gradient.
+        """
+        X = np.atleast_2d(np.asarray(X, dtype=float))
+        values = {k: X[:, i] for i, k in enumerate(self.input_keys)}
+        pre, live = {}, {}
+        for node in self.eval_order:
+            j = self._bias_ix[node]
+            total = self.biases[j] * np.ones(len(X))
+            live[node] = [(ci, s) for ci, s in self._incoming[node] if s in values]
+            for ci, src in live[node]:
+                total = total + self.weights[ci] * values[src]
+            pre[node] = total
+            values[node] = _act(self.activations[j], total)
+        return values, pre, live
+
+    @staticmethod
+    def _bce(z: np.ndarray, y) -> tuple[float, np.ndarray]:
+        y = np.asarray(y, dtype=float)
+        if y.shape != z.shape:
+            raise ValueError(f"y has shape {y.shape}, expected {z.shape}")
+        return float(np.mean(np.logaddexp(0.0, z) - y * z)), y
+
+    def loss(self, X: np.ndarray, y: np.ndarray) -> float:
+        """Mean binary cross-entropy of forward(X) against labels y in {0, 1}."""
+        out = self._output_key()
+        _, pre, _ = self._pass(X)
+        return self._bce(pre[out], y)[0]
+
+    def loss_and_grad(self, X: np.ndarray, y: np.ndarray) -> tuple[float, np.ndarray]:
+        """(loss(X, y), its gradient w.r.t. get_params()), by reverse mode.
+
+        Parameters that cannot reach the output get exactly 0: connections
+        into nodes outside eval_order, and weights whose source forward()
+        reads as 0. Does not change the network's parameters.
+        """
+        out = self._output_key()
+        values, pre, live = self._pass(X)
+        z = pre[out]
+        loss, y = self._bce(z, y)
+
+        nw = len(self.weights)
+        grad = np.zeros(self.n_params)
+        adj = {}  # node -> dL/d(node's value), summed over the nodes it feeds
+        for node in reversed(self.eval_order):
+            j = self._bias_ix[node]
+            if node == out:
+                delta = (_sigmoid(z) - y) / len(z)  # dL/dz
+            elif node in adj:
+                delta = adj.pop(node) * _act_grad(self.activations[j], pre[node])
+            else:
+                continue  # feeds nothing that reaches the output
+            grad[nw + j] = delta.sum()
+            for ci, src in live[node]:
+                grad[ci] = delta @ values[src]
+                if src in self._bias_ix:  # a node, not an input
+                    adj[src] = adj.get(src, 0.0) + delta * self.weights[ci]
+        return loss, grad
+
 
 def complexity(genome) -> tuple[int, int]:
-    """(node count, enabled connection count) — useful for a size penalty."""
+    """(node count, enabled connection count) — useful for a size penalty.
+
+    Counts every enabled gene, including ones that never reach the output
+    (about a third of enabled connections in a typical population).
+    """
     nodes = len(genome.nodes)
     conns = sum(1 for c in genome.connections.values() if c.enabled)
     return nodes, conns
+
+
+def champion_net(genome, config) -> GenomeNetwork:
+    """The network a genome's fitness was earned with.
+
+    If evaluation stored refined parameters on the genome
+    (`genome.refined_params`), load them; otherwise use the genome's own
+    weights. Lamarckian genomes already carry their refined weights; a
+    Baldwinian genome does not, so building it with GenomeNetwork alone would
+    test the unrefined network.
+    """
+    net = GenomeNetwork(genome, config)
+    theta = getattr(genome, "refined_params", None)
+    if theta is not None:
+        net.set_params(theta)
+    return net
+
+
+class SigmoidOutputGenome(neat.DefaultGenome):
+    """DefaultGenome whose output nodes always use sigmoid.
+
+    Hidden nodes still mutate among `activation_options`.
+    """
+
+    @staticmethod
+    def _pin_outputs(genome, config):
+        for k in config.output_keys:
+            genome.nodes[k].activation = "sigmoid"
+
+    def configure_new(self, config):
+        super().configure_new(config)
+        self._pin_outputs(self, config)
+
+    def configure_crossover(self, genome1, genome2, config):
+        super().configure_crossover(genome1, genome2, config)
+        self._pin_outputs(self, config)
+
+    def mutate(self, config):
+        super().mutate(config)
+        self._pin_outputs(self, config)
+
+
+def live_connections(genome, genome_config) -> set:
+    """Enabled connections whose term forward() actually adds.
+
+    Same graph code as GenomeNetwork: a connection is live when its target is
+    in eval_order and its source is an input or in eval_order. The rest are
+    "dead" (they count in complexity() but change no output); disabling one
+    leaves eval_order, every node's sum, and so forward(), unchanged.
+    """
+    conns = [k for k, c in genome.connections.items() if c.enabled]
+    result = feed_forward_layers(genome_config.input_keys,
+                                 genome_config.output_keys, conns)
+    layers = result[0] if isinstance(result, tuple) else result
+    computed = set(genome_config.input_keys).union(*layers)
+    return {(a, b) for a, b in conns if a in computed and b in computed}
+
+
+def repair_to_max_conns(genome, genome_config, max_conns: int) -> tuple[int, int]:
+    """Disable enabled connections until at most `max_conns` remain.
+
+    Never disables more than the excess, and changes nothing else (weights,
+    biases, nodes, disabled genes all untouched). Deterministic, no random
+    numbers drawn, so a seed's random stream is not consumed. Order:
+
+    1. dead connections (see live_connections), by key: free, forward() is
+       unchanged;
+    2. then one live connection at a time, smallest |weight| first (key breaks
+       ties): magnitude pruning, the least first-order change to the genome's
+       own network. Disabling it can leave other connections dead, so the
+       live set is recomputed and step 1 runs again before the next.
+
+    Returns (dead disabled, live disabled).
+    """
+    if max_conns < 0:
+        raise ValueError(f"max_conns must be >= 0, got {max_conns}")
+    n_dead = n_live = 0
+    while True:
+        enabled = sorted(k for k, c in genome.connections.items() if c.enabled)
+        excess = len(enabled) - max_conns
+        if excess <= 0:
+            return n_dead, n_live
+        live = live_connections(genome, genome_config)
+        dead = [k for k in enabled if k not in live]
+        if dead:
+            for k in dead[:excess]:
+                genome.connections[k].enabled = False
+            n_dead += min(excess, len(dead))
+            continue
+        k = min(enabled, key=lambda k: (abs(genome.connections[k].weight), k))
+        genome.connections[k].enabled = False
+        n_live += 1
+
+
+class MaxConnsGenome(SigmoidOutputGenome):
+    """SigmoidOutputGenome with at most `config.max_conns` enabled connections.
+
+    Every way NEAT creates a genome (configure_new, configure_crossover,
+    mutate) ends with repair_to_max_conns, so no genome NEAT evaluates is ever
+    over the limit (elites are carried over unchanged, already repaired).
+    `repair_dead` / `repair_live` count what the repairs disabled while this
+    genome was being created (crossover + mutation), for the run's log.
+    """
+
+    def __init__(self, key):
+        super().__init__(key)
+        self.repair_dead = 0
+        self.repair_live = 0
+
+    def _repair(self, config):
+        dead, live = repair_to_max_conns(self, config, config.max_conns)
+        self.repair_dead += dead
+        self.repair_live += live
+
+    def configure_new(self, config):
+        super().configure_new(config)
+        self._repair(config)
+
+    def configure_crossover(self, genome1, genome2, config):
+        super().configure_crossover(genome1, genome2, config)
+        self._repair(config)
+
+    def mutate(self, config):
+        super().mutate(config)
+        self._repair(config)
+
+
+def load_config(path, max_conns: int | None = None) -> neat.Config:
+    """neat.Config that builds SigmoidOutputGenome genomes.
+
+    neat.Config reads the ini section named after the genome class, so parse
+    with DefaultGenome (the [DefaultGenome] section, same parameters) and then
+    swap the type: Population and reproduction create genomes through
+    config.genome_type.
+
+    max_conns: build MaxConnsGenome genomes instead, repaired to at most this
+    many enabled connections (stored as config.genome_config.max_conns, which
+    is what the genome methods receive). None (default) changes nothing.
+    """
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation, str(path))
+    config.genome_type = SigmoidOutputGenome
+    if max_conns is not None:
+        if int(max_conns) != max_conns or max_conns < 0:
+            raise ValueError(f"max_conns must be an integer >= 0, got {max_conns!r}")
+        config.genome_type = MaxConnsGenome
+        config.genome_config.max_conns = int(max_conns)
+    return config

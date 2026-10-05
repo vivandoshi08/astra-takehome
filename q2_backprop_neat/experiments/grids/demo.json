@@ -1,0 +1,12 @@
+{
+  "name": "demo",
+  "description": "Harness smoke test with today's main.py: plain NEAT (no refinement), 5 vs 10 generations.",
+  "datasets": ["xor", "spiral", "spiral3"],
+  "seeds": [0, 1],
+  "common_args": {"--steps": 0},
+  "arms": [
+    {"name": "gen5", "args": {"--generations": 5}},
+    {"name": "gen10", "args": {"--generations": 10}}
+  ],
+  "timeout": 300
+}

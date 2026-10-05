@@ -1,0 +1,9 @@
+dataset spiral3 | pop 100 | 100 steps/genome | refine 10% | 1000 steps/gen -> 30 generations within 30,000 steps | strategy baldwinian | fit 280 / val 70
+
+dataset          : spiral3
+generations      : 30
+budget           : 30,000/30,000 gradient steps over 300 refinements
+fit / val acc    : 0.639 / 0.686
+held-out accuracy: 0.647 (majority class 0.567)
+champion size    : 1 nodes, 1 enabled connections (generation 1)
+wrote /Users/vivandoshi/Documents/astra-takehome 3/q2_backprop_neat/runs/frontier/bald_mult_0.3/spiral3_s1/
