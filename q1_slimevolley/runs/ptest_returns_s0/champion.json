@@ -1,0 +1,8 @@
+{
+  "key": 448,
+  "generation": 7,
+  "train_fitness": 1.4,
+  "val_mean": -4.7,
+  "nodes": 4,
+  "conns": 28
+}
