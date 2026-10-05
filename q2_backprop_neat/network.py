@@ -34,6 +34,10 @@ sin(z), exp(-z^2)); neat-python's own `neat.nn` uses sigmoid(5z), tanh(2.5z),
 sin(5z) and exp(-5z^2), so never evaluate with `neat.nn`. neat-python only
 needs an activation's *name* (mutation picks among `activation_options`);
 'sin' and 'gauss' are both in its built-in registry.
+
+Small-network track (`load_config(path, max_conns=N)`): `MaxConnsGenome`
+repairs every genome it creates (new, crossover, mutation) down to at most N
+enabled connections. See `repair_to_max_conns` for the rule.
 """
 
 from __future__ import annotations
@@ -327,15 +331,109 @@ class SigmoidOutputGenome(neat.DefaultGenome):
         self._pin_outputs(self, config)
 
 
-def load_config(path) -> neat.Config:
+def live_connections(genome, genome_config) -> set:
+    """Enabled connections whose term forward() actually adds.
+
+    Same graph code as GenomeNetwork: a connection is live when its target is
+    in eval_order and its source is an input or in eval_order. The rest are
+    "dead" (they count in complexity() but change no output); disabling one
+    leaves eval_order, every node's sum, and so forward(), unchanged.
+    """
+    conns = [k for k, c in genome.connections.items() if c.enabled]
+    result = feed_forward_layers(genome_config.input_keys,
+                                 genome_config.output_keys, conns)
+    layers = result[0] if isinstance(result, tuple) else result
+    computed = set(genome_config.input_keys).union(*layers)
+    return {(a, b) for a, b in conns if a in computed and b in computed}
+
+
+def repair_to_max_conns(genome, genome_config, max_conns: int) -> tuple[int, int]:
+    """Disable enabled connections until at most `max_conns` remain.
+
+    Never disables more than the excess, and changes nothing else (weights,
+    biases, nodes, disabled genes all untouched). Deterministic, no random
+    numbers drawn, so a seed's random stream is not consumed. Order:
+
+    1. dead connections (see live_connections), by key: free, forward() is
+       unchanged;
+    2. then one live connection at a time, smallest |weight| first (key breaks
+       ties): magnitude pruning, the least first-order change to the genome's
+       own network. Disabling it can leave other connections dead, so the
+       live set is recomputed and step 1 runs again before the next.
+
+    Returns (dead disabled, live disabled).
+    """
+    if max_conns < 0:
+        raise ValueError(f"max_conns must be >= 0, got {max_conns}")
+    n_dead = n_live = 0
+    while True:
+        enabled = sorted(k for k, c in genome.connections.items() if c.enabled)
+        excess = len(enabled) - max_conns
+        if excess <= 0:
+            return n_dead, n_live
+        live = live_connections(genome, genome_config)
+        dead = [k for k in enabled if k not in live]
+        if dead:
+            for k in dead[:excess]:
+                genome.connections[k].enabled = False
+            n_dead += min(excess, len(dead))
+            continue
+        k = min(enabled, key=lambda k: (abs(genome.connections[k].weight), k))
+        genome.connections[k].enabled = False
+        n_live += 1
+
+
+class MaxConnsGenome(SigmoidOutputGenome):
+    """SigmoidOutputGenome with at most `config.max_conns` enabled connections.
+
+    Every way NEAT creates a genome (configure_new, configure_crossover,
+    mutate) ends with repair_to_max_conns, so no genome NEAT evaluates is ever
+    over the limit (elites are carried over unchanged, already repaired).
+    `repair_dead` / `repair_live` count what the repairs disabled while this
+    genome was being created (crossover + mutation), for the run's log.
+    """
+
+    def __init__(self, key):
+        super().__init__(key)
+        self.repair_dead = 0
+        self.repair_live = 0
+
+    def _repair(self, config):
+        dead, live = repair_to_max_conns(self, config, config.max_conns)
+        self.repair_dead += dead
+        self.repair_live += live
+
+    def configure_new(self, config):
+        super().configure_new(config)
+        self._repair(config)
+
+    def configure_crossover(self, genome1, genome2, config):
+        super().configure_crossover(genome1, genome2, config)
+        self._repair(config)
+
+    def mutate(self, config):
+        super().mutate(config)
+        self._repair(config)
+
+
+def load_config(path, max_conns: int | None = None) -> neat.Config:
     """neat.Config that builds SigmoidOutputGenome genomes.
 
     neat.Config reads the ini section named after the genome class, so parse
     with DefaultGenome (the [DefaultGenome] section, same parameters) and then
     swap the type: Population and reproduction create genomes through
     config.genome_type.
+
+    max_conns: build MaxConnsGenome genomes instead, repaired to at most this
+    many enabled connections (stored as config.genome_config.max_conns, which
+    is what the genome methods receive). None (default) changes nothing.
     """
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation, str(path))
     config.genome_type = SigmoidOutputGenome
+    if max_conns is not None:
+        if int(max_conns) != max_conns or max_conns < 0:
+            raise ValueError(f"max_conns must be an integer >= 0, got {max_conns!r}")
+        config.genome_type = MaxConnsGenome
+        config.genome_config.max_conns = int(max_conns)
     return config

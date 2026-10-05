@@ -27,6 +27,16 @@ What refinement leaves behind (--strategy):
                 champion is evaluated with them)
 Elites are refined again every generation they are evaluated, under both.
 
+Small networks (--max-conns N): every genome NEAT creates (initial, crossover,
+mutation) is repaired at creation to at most N enabled connections, the count
+complexity() reports (network.MaxConnsGenome: dead connections are disabled
+first, then live ones by smallest |weight|; no random numbers drawn). So every
+genome evaluated, refined, or chosen as champion is within the limit, and
+--steps / --refine-fraction / plan() mean exactly what they mean without the
+flag: no gradient step is spent on a genome that could not be a champion,
+because none exists. The run fails (exit 1) rather than report a champion or
+train-best genome over N. summary.json records the repairs.
+
 Data: the training split is divided once, by a fixed seed shared by every run,
 into a fit split (refinement and fitness) and a validation split (choosing the
 champion, nothing else). The held-out split is only ever reported.
@@ -37,6 +47,9 @@ Writes to runs/<run-id>/:
     champion.pkl          champion genome (.refined_params if it was refined)
     summary.json          args, git commit, budget.summary(), champion stats
     genomes.jsonl         one row per genome per generation (--log-genomes)
+With --max-conns, fitness_history.csv gains MAXCONNS_COLUMNS at the end and
+genomes.jsonl rows gain repair_dead / repair_live; without it both files are
+exactly as before.
 
 Refuses to overwrite an existing run unless --overwrite is given.
 Exit codes: 0 ok, 2 usage error, 4 over budget (logs written, run invalid);
@@ -82,6 +95,9 @@ HISTORY_COLUMNS = [
     "best_val_acc", "champion_val_acc",                     # validation: this gen's best / champion so far
     "n_genome_changed", "n_clamped", "max_abs_param",       # inheritance evidence
 ]
+# Appended only with --max-conns: genomes first seen this generation, and how
+# many of them repair_to_max_conns had to cut down.
+MAXCONNS_COLUMNS = ["n_new_genomes", "n_repaired"]
 
 
 def git_commit() -> str:
@@ -198,6 +214,15 @@ class Evaluator:
         self.refine_calls = 0
         self.genomes_refined = 0
 
+        # --max-conns bookkeeping (unused without it)
+        self.max_conns = getattr(args, "max_conns", None)
+        self._seen_keys: set = set()
+        self.genomes_created = 0      # distinct genomes evaluated
+        self.genomes_repaired = 0     # ... that repair had to cut down at creation
+        self.repair_dead = 0          # connections repair disabled: dead ones
+        self.repair_live = 0          # ... live ones
+        self._gen_new = self._gen_repaired = 0
+
     # ---- scoring -----------------------------------------------------------
     def fitness_of(self, r: Rec) -> float:
         return penalised(r.acc, r.conns, self.args.penalty, self.args.penalty_form)
@@ -231,14 +256,34 @@ class Evaluator:
                 self._step(r, steps)
 
     # ---- the fitness function NEAT calls ------------------------------------
+    def _check_size(self, key, g, conns) -> None:
+        """--max-conns: no genome over the limit is ever scored; count repairs."""
+        if conns > self.max_conns:
+            raise RuntimeError(f"genome {key} has {conns} enabled connections, over "
+                               f"--max-conns {self.max_conns}: repair failed")
+        if key in self._seen_keys:  # an elite carried over: already counted
+            return
+        self._seen_keys.add(key)
+        dead, live = getattr(g, "repair_dead", 0), getattr(g, "repair_live", 0)
+        self.genomes_created += 1
+        self._gen_new += 1
+        if dead or live:
+            self.genomes_repaired += 1
+            self._gen_repaired += 1
+        self.repair_dead += dead
+        self.repair_live += live
+
     def __call__(self, genomes, config):
         recs = []
+        self._gen_new = self._gen_repaired = 0
         for key, g in genomes:
             # Cleared first: an elite not refined this generation must not
             # carry last generation's vector.
             g.refined_params = None
             net = GenomeNetwork(g, config)
             nodes, conns = complexity(g)
+            if self.max_conns is not None:
+                self._check_size(key, g, conns)
             acc = net.accuracy(self.X, self.y)
             r = Rec(key, g, net, nodes, conns, pre_acc=acc, acc=acc,
                     hash_before=genome_hash(g))
@@ -303,6 +348,9 @@ class Evaluator:
             "n_clamped": sum(r.clamped for r in recs),
             "max_abs_param": max(float(np.abs(n.get_params()).max()) for n in nets),
         }
+        if self.max_conns is not None:
+            row["n_new_genomes"] = self._gen_new
+            row["n_repaired"] = self._gen_repaired
         self.history.append(row)
 
         if self.genome_log is not None:
@@ -311,7 +359,7 @@ class Evaluator:
             for r in recs:
                 val = (r.net.accuracy(self.X_val, self.y_val)
                        if len(self.X_val) else None)
-                self.genome_log.write(json.dumps({
+                entry = {
                     "gen": self.gen, "key": r.key,
                     "parents": list(ancestors.get(r.key, ())),
                     "species": g2s.get(r.key), "nodes": r.nodes, "conns": r.conns,
@@ -319,7 +367,11 @@ class Evaluator:
                     "pre_loss": r.pre_loss, "loss": r.loss, "fitness": r.fitness,
                     "val_acc": val, "hash_before": r.hash_before,
                     "hash_after": r.hash_after, "clamped": r.clamped,
-                }) + "\n")
+                }
+                if self.max_conns is not None:
+                    entry["repair_dead"] = getattr(r.genome, "repair_dead", 0)
+                    entry["repair_live"] = getattr(r.genome, "repair_live", 0)
+                self.genome_log.write(json.dumps(entry) + "\n")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -343,6 +395,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="share of the training split held back for champion selection")
     ap.add_argument("--penalty", type=float, default=0.0, help="complexity penalty strength")
     ap.add_argument("--penalty-form", choices=("linear", "sqrt", "mult"), default="linear")
+    ap.add_argument("--max-conns", type=int, default=None,
+                    help="small-network track: every genome is repaired at creation to at "
+                         "most this many enabled connections (default: no limit)")
     ap.add_argument("--budget", type=int, default=DEFAULT_BUDGET)
     ap.add_argument("--generations", type=int, default=None,
                     help="override the derived generation count")
@@ -373,6 +428,8 @@ def main() -> int:
         ap.error("--val-frac must be in [0, 0.5)")
     if args.generations is not None and args.generations < 1:
         ap.error("--generations must be >= 1")
+    if args.max_conns is not None and args.max_conns < 1:
+        ap.error("--max-conns must be >= 1")
 
     run_dir = HERE / "runs" / (args.run_id or args.dataset)
     if (run_dir / "fitness_history.csv").exists() and not args.overwrite:
@@ -383,7 +440,8 @@ def main() -> int:
     X_train, y_train, X_test, y_test = get_dataset(args.dataset)
     X_fit, y_fit, X_val, y_val = split_validation(X_train, y_train, args.val_frac)
 
-    config = load_config(args.config)
+    config = (load_config(args.config) if args.max_conns is None
+              else load_config(args.config, max_conns=args.max_conns))
     pop_size = config.pop_size
     if args.allocation == "halving":
         per_gen = sum(n * s for n, s in halving_schedule(
@@ -402,7 +460,8 @@ def main() -> int:
     print(f"dataset {args.dataset} | pop {pop_size} | {alloc} | "
           f"{per_gen} steps/gen -> {generations} generations within "
           f"{args.budget:,} steps | strategy {args.strategy} | "
-          f"fit {len(X_fit)} / val {len(X_val)}")
+          f"fit {len(X_fit)} / val {len(X_val)}"
+          + (f" | max {args.max_conns} enabled conns" if args.max_conns is not None else ""))
     if planned is not None and generations > planned:
         print(f"WARNING: --generations {generations} > the {planned} this "
               "allocation affords; the run will stop when the budget is spent")
@@ -427,8 +486,9 @@ def main() -> int:
         if genome_log is not None:
             genome_log.close()
 
+    columns = HISTORY_COLUMNS + (MAXCONNS_COLUMNS if args.max_conns is not None else [])
     with (run_dir / "fitness_history.csv").open("w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=HISTORY_COLUMNS)
+        w = csv.DictWriter(fh, fieldnames=columns)
         w.writeheader()
         w.writerows(evaluator.history)
 
@@ -451,8 +511,27 @@ def main() -> int:
         "n_val": len(X_val),
         "heldout_majority_class": float(max(y_test.mean(), 1 - y_test.mean())),
     }
+    if args.max_conns is not None:
+        summary.update({
+            "max_conns": args.max_conns,
+            "max_conns_mechanism": "repair at creation (network.MaxConnsGenome): "
+                                   "dead connections first, then smallest |weight|",
+            "genomes_created": evaluator.genomes_created,
+            "genomes_repaired": evaluator.genomes_repaired,
+            "repair_disabled_dead": evaluator.repair_dead,
+            "repair_disabled_live": evaluator.repair_live,
+            "genomes_over_limit_evaluated": 0,  # any would have stopped the run
+        })
 
     champ = evaluator.champion
+    if champ is not None and args.max_conns is not None:
+        # The guarantee the small-network result rests on, checked on the
+        # genomes themselves before champion.pkl or summary.json is written.
+        over = {name: complexity(g)[1] for name, g in (("champion", champ),
+                                                       ("train-best", evaluator.trainbest))
+                if complexity(g)[1] > args.max_conns}
+        if over:
+            raise RuntimeError(f"over --max-conns {args.max_conns}: {over}")
     if champ is not None:
         with (run_dir / "champion.pkl").open("wb") as fh:
             pickle.dump(champ, fh)
