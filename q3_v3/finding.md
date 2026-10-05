@@ -52,6 +52,14 @@ loses.
 | B champions whose encoders search | 0.0000–0.0002 | 0.0001–0.0020 |
 | b05, whose encoders mostly don't | 0.0060 | 0.0011 |
 
+**What it looks like** (`figures/compare_models.png`). Searching models
+(ours, the hint and Luna champions) draw crisp ellipses and leave only
+noise. The best shipped champion draws blurred ones and is wrong
+everywhere: its interior error against the clean image is 28× ours. The
+blur is a hedge. With its own encoder, the true sharp decoder scores worse
+than its blurred one in 3 of 5 shipped runs. Haiku edits the drawing to hide
+the measuring.
+
 ## Trying to break it
 
 - ***"Haiku can't write a search."*** With the hint it writes one in 72% of
