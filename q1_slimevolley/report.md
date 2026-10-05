@@ -77,29 +77,41 @@ the lab notebook.
 **Reproduce** (conda env `astra`, Python 3.11; ~25 min on 9 cores; seeds 0, 1, 2):
 
 ```sh
-python evolve.py --seed 1 --config configs/direction_r1.ini \
+python evolve.py --seed 1 --config configs/direction_r1.ini --workers 3 \
   --phase1-steps 40000000 --phase1-survival 0.3 \
   --survival-bonus 0.3 --return-bonus 0.07 --return-cap 9 --run-id full100m_direction_s1
 python evaluate.py --winner runs/full100m_direction_s1/champion.pkl --episodes 100
 ```
 
+This is the recorded command (`runs/full100m_direction_s1/run_args.json`).
 `experiments/full_direction.sh` runs all three seeds plus evaluation and replays. The
 same command reproduces byte-identical `genomes.jsonl`, `validation.jsonl` and champion,
 whether run with 3 or 9 workers.
 
 ## Fitness curve
 
+![population best and mean per generation, seed 1](runs/full100m_direction_s1/analysis/fitness_curve.png)
+
+*Best run (seed 1): population best and mean per generation, from
+`runs/full100m_direction_s1/fitness_history.csv`. Dotted lines are raw score (points
+won − lost, the graded scale): population best (green) and mean (red). Solid lines are
+the selection fitness the population was ranked on. Until 40M steps (generation 85
+here) that is the phase-1 objective (returns + survival, no score term), which is on a
+different scale and runs off the top of the plot. After the switch it is score plus
+capped shaping, so it sits at most 0.93 above the raw lines. Dashed purple: validation score
+of this generation's best genome; brown: the champion's validation score. Seeds 0 and
+2: `runs/full100m_direction_s{0,2}/analysis/fitness_curve.png`.*
+
 ![old vs new mapping](experiments/mapping_comparison.png)
 
-Champion validation score against steps, same seeds, same fitness formula; only the
-action mapping and `response` (0.2 → 1.0) differ.
+*Champion validation score against steps, all three seeds, same fitness formula; only
+the action mapping and `response` (0.2 → 1.0) differ.*
 - **Direction mapping:** every seed escapes −4.7 between 7M and 12M steps. Seeds 0 and
   2 reach 0 by 20M, *before score is part of fitness*. All three end at +0.45 to +0.55.
 - **Old mapping:** seed 0 escapes later (~17M); seeds 1 and 2 stay net campers for the
   whole budget.
 
-Per-run curves with population best and mean, train and raw:
-`runs/full100m_direction_s*/analysis/fitness_curve.png`.
+From the per-run curves:
 - The population **mean** raw score lags far behind the best. After 80M steps it
   averages −3.08 / −3.10 / −2.58 while the champions sit near 0, because mutation
   breaks many offspring of good genomes. (In the old, stuck runs it stayed near −4.5.)
@@ -138,8 +150,10 @@ Every game reaches the 3000-step limit, which is normal for competent play here 
 | seed 1 | 4 (2 + 2) | 19 (13 disabled) | 4 / 19 | sigmoid × 4 |
 | seed 2 | 4 (2 + 2) | 16 (11 disabled) | 4 / 16 | sigmoid × 4 |
 
-All are feed-forward, sum aggregation, response 1.0. Tables:
-`runs/full100m_direction_s*/architecture.md`.
+Each champion has 14 inputs: the 12 observations plus the 2 derived `ball − me`
+inputs. Node counts above exclude inputs, as neat-python does; seeds 0 / 1 / 2 use 5 /
+12 / 11 of the 14 inputs on a path to an output. All are feed-forward, sum aggregation,
+response 1.0. Tables: `runs/full100m_direction_s*/architecture.md`.
 
 - **All three found the same core:** `direction ← (ball x − my x)` with weight
   −8.1 / −11.5 / −11.4, meaning *move toward the ball's x*. That's the one-weight
@@ -335,8 +349,8 @@ Checked against README "Ground rules" and the Q1 section of QUESTIONS.md:
 
 - **Never edited (byte-identical to the original first commit `d23a4bd`):** all three
   `budget.py` files, the environment `slimevolley.py`, `sanity_check.sh`,
-  `package_submission.sh`, `requirements.txt`, `README.md`, `QUESTIONS.md`, and every Q2
-  / Q3 file.
+  `package_submission.sh`, `requirements.txt`, `README.md`, `QUESTIONS.md`. No Q1
+  commit touches a Q2 or Q3 file.
 - **Original Q1 files I did change, each one the task opens up:**
   - `episode.py` ("the piece you implement"; `play_episode(net, env)` signature kept)
   - `evolve.py` ("everything else is your call")
@@ -377,5 +391,4 @@ Checked against README "Ground rules" and the Q1 section of QUESTIONS.md:
 - **A stepping-stone objective stops being informative once it succeeds.** Phase 1 was
   essential to escape the trap. But among champions that already rally, more returns no
   longer means more points.
-- **Time:** about 3.5 h of session time (16:08 → 19:35 by commit timestamps). Q2/Q3 were not attempted by me. `git log` shows
-  the order things were found.
+- **Time:** about 3.5 h of session time (16:08 → 19:35 by commit timestamps).
