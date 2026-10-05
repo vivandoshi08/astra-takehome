@@ -1,0 +1,35 @@
+{
+  "name": "mechanism_logs",
+  "datasets": [
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "lamarckian_log",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--log-genomes": true
+      }
+    },
+    {
+      "name": "baldwinian_log",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--log-genomes": true
+      }
+    }
+  ]
+}

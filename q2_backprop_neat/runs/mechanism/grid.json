@@ -1,0 +1,90 @@
+{
+  "name": "mechanism",
+  "datasets": [
+    "xor",
+    "spiral",
+    "spiral3"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "common_args": {
+    "--lr": 0.3
+  },
+  "arms": [
+    {
+      "name": "bald_d10",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30
+      }
+    },
+    {
+      "name": "bald_d30",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 30,
+        "--refine-fraction": 0.33,
+        "--generations": 30
+      }
+    },
+    {
+      "name": "bald_d100",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 100,
+        "--refine-fraction": 0.1,
+        "--generations": 30
+      }
+    },
+    {
+      "name": "bald_d300",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 300,
+        "--refine-fraction": 0.03,
+        "--generations": 30
+      }
+    },
+    {
+      "name": "lam_d10",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30
+      }
+    },
+    {
+      "name": "lam_topo",
+      "args": {
+        "--strategy": "lamarckian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--config": "neat_config_topo.ini"
+      }
+    },
+    {
+      "name": "bald_topo",
+      "args": {
+        "--strategy": "baldwinian",
+        "--steps": 10,
+        "--refine-fraction": 1.0,
+        "--generations": 30,
+        "--config": "neat_config_topo.ini"
+      }
+    }
+  ]
+}
