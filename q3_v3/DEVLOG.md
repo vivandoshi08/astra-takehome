@@ -154,3 +154,26 @@ population, which is what protects it.
 AUDIT.md F1 settled: Haiku 4.5 does accept `EVO_REASONING` on OpenRouter,
 against the README. Real cost per call is ~$0.006–0.008 at generation 0,
 so ~$0.40 per 12-generation run holds; reasoning "low" adds ~25%.
+
+## 2026-10-04 — student.py: per-image fit of the generator's six numbers
+
+Analysis by synthesis: a moments first guess (axes = 2·√λ, the right
+constant for a filled ellipse; brightness by least squares given the shape),
+then Levenberg-Marquardt on all six with `data.render` as the decoder, from
+three starting tilts. numpy only (scipy is not in requirements.txt).
+Developed on fresh `train_images` (seeds 7 and 2024) with `student_dev.py`;
+scored on PUBLIC and HELD_OUT once, after.
+
+| set | student | theory −σ²(1−6/256) on that set | clean truth |
+|---|---|---|---|
+| fresh, seed 7 | −0.009738 | −0.009766 (expected) | −0.009995 |
+| fresh, seed 2024 | −0.009619 | −0.009766 (expected) | −0.009866 |
+| PUBLIC | **−0.009600** | −0.009599 | −0.009833 |
+| HELD_OUT | **−0.009680** | −0.009699 | −0.009933 |
+
+Prediction was −0.0096 to −0.0098 on both: met. Bonus tier (≥ −0.0105).
+Against an "oracle-start" fit (same optimiser started from the true
+parameters) it is better on average (−1.3e-5 per image): 12/256 images
+better by >1e-4, 1/256 worse (img 185, a small ellipse, a/b 1.44). So
+almost nothing is left to local minima; the remaining error is the noise.
+4 ms per image; deterministic.
