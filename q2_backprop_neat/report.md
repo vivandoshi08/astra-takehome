@@ -63,7 +63,9 @@ rate 0.3, chosen on training data), using a hand-written backward pass
 verified against finite differences. Parameters are clipped to NEAT's ±30
 range after each update. One gradient step is one full-batch gradient plus
 one update; forward passes are free, as in the provided code, and no run
-exceeded 30,000 steps.
+exceeded 30,000 steps. Every run writes `budget.summary()` verbatim to its
+`summary.json` (field `budget`); captions quote it as "spent/limit steps over
+N refinements".
 
 **Evolution and inheritance.** NEAT runs with the provided configuration
 (population 100). neat-python 2.0 reads that configuration's missing
@@ -119,8 +121,9 @@ genomes are refined, they are chosen by unrefined fitness.
 *Table 2. Allocations and held-out accuracy, seeds 0–9 (xor, validation
 accuracy and spread in Appendix A1). Bold: the allocation chosen for each
 strategy. n < 10 where neat-python stopped runs early (Section 3.3). Budget
-per run: 30,000/30,000 steps over 3,000 (A), 300 (B), 600 (C) and 6,000 (E)
-refinements; D 29,520/30,000 over 5,790 refinement calls.*
+per completed run: 30,000/30,000 steps over 3,000 (A), 300 (B), 600 (C) and
+6,000 (E) refinements; D 29,520/30,000 over 5,790. The five runs stopped
+early spent less and are excluded from the means (budgets in Appendix A1).*
 
 | | Allocation | Gens | Lamarckian spiral | Lamarckian spiral3 | Baldwinian spiral | Baldwinian spiral3 |
 |---|---|--:|--:|--:|--:|--:|
@@ -160,6 +163,12 @@ beats B for Lamarckian, did not hold; for Lamarckian the two are
 indistinguishable.
 
 ### 3.3 Lamarckian versus Baldwinian inheritance
+
+**Our implementation does both**, chosen per run by `--strategy` in
+`main.py`, and every result in this report names the strategy it used. After
+refinement, Lamarckian runs call `net.write_back(genome)`; Baldwinian runs
+leave the genome's weights untouched and keep the refined weights only to set
+its fitness (and, for the champion, to evaluate and plot it).
 
 **Each strategy does what it claims.** Across the allocation study,
 Lamarckian evaluation changed the stored weights of all 368,700 refined
@@ -281,6 +290,13 @@ draw parallel
 stripes whose spacing happens to match the arms, not spirals. Three graded
 runs were executed during development before the predictions were written;
 excluding them changes no mean by more than 0.004.
+
+The best single champions with at most six connections reach 0.987 (xor,
+Lamarckian), 0.913 (spiral, Baldwinian) and 0.847 (spiral3, Lamarckian) with
+standard activations, and 0.980 / 0.987 / 0.940 with sine units; the best
+unconstrained Lamarckian champions reach 0.980 / 0.980 / 0.953. These maxima
+are picked by held-out score after the fact, so they are optimistic; the
+means in Table 5 are the fair comparison.
 
 ![sine](figures/smallnet_sine_representative.png)
 *Figure 3. Median-seed Lamarckian champions with sine units and at most six
@@ -418,8 +434,12 @@ validation and budget columns from `runs/allocation/summary.md`.*
 | E: 5 × 100%, 60 gens | Lamarckian | 0.968 ± 0.004 (10) | 0.877 ± 0.061 (10) | 0.793 ± 0.045 (10) | 30,000 over 6,000 |
 | | Baldwinian | 0.966 ± 0.022 (10) | 0.851 ± 0.037 (10) | 0.673 ± 0.064 (10) | same |
 
-Runs stopped early by neat-python (per-species minimum): Lamarckian B
-spiral seed 4; Lamarckian D xor seed 1, spiral seeds 0, 6, 9. Lamarckian D
+Runs stopped early by neat-python (per-species minimum), with their
+`budget.summary()`: Lamarckian B spiral seed 4 (21,000/30,000 over 210
+refinements, 21 generations); Lamarckian D xor seed 1 (20,664/30,000 over
+4,053, 21 generations), spiral seed 0 (15,744/30,000 over 3,088, 16),
+seed 6 (20,664/30,000 over 4,053, 21) and seed 9 (21,648/30,000 over 4,246,
+22). Their held-out accuracies are excluded from the means above. Lamarckian D
 spiral3 seeds 0 and 1 completed all 30 generations but were discarded by a
 driver bug until the post-merge audit (DEVLOG #17); they were re-run.
 
@@ -481,7 +501,7 @@ steps. Source: `runs/pilot/pilot.json`.*
 
 ### A5. Mechanism, round 1
 
-*Held-out accuracy, 10 seeds; refinements per run: 3,000 (10 × 100%), 990 × 30 (30 × 33%),
+*Held-out accuracy, 10 seeds; refinements per run: 3,000 (10 × 100%), 990 (30 × 33%),
 300 (100 × 10%), 90 (300 × 3%). Source: `runs/mechanism/mechanism_scored.md`.*
 
 | Configuration | Steps used | xor | spiral | spiral3 | Median max. species (spiral / spiral3) |
