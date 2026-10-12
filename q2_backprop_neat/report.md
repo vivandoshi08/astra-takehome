@@ -353,41 +353,74 @@ inner-ring accuracy.
 
 ## 5. What went wrong, and how it was found
 
-1. **Baldwinian champions would have been scored with unrefined weights.**
-   The provided code rebuilt the champion from its genome, which under
-   Baldwinian inheritance never holds the refined weights. Found by auditing
-   the provided code before writing refinement; fixed by storing the
-   refined weights for evaluation and plotting, with tests that offspring
-   never inherit them.
-2. **The output activation could mutate** (tanh or relu in 53% of genomes)
-   while prediction thresholds at 0.5. Found by tabulating output ranges
-   during the audit; fixed by pinning the output to sigmoid.
-3. **An exit code had two meanings, and `--generations 0` was ignored.** A
-   budget overrun and a crash both exited with code 1, and a zero silently
-   became 30 generations. Found by the experiment-harness agent; fixed with
-   a dedicated exit code, validation and a forced-overrun test.
-4. **The learning-rate probe used validation data.** Found while reviewing
-   the agent-written probe; rerun on fit points only, with the same result.
-5. **The pilot misled twice**: its rule recommended 1–3 generations, and
-   the predictions built on it were mostly contradicted (Section 3.2).
-6. **Lamarckian runs fragmented until neat-python stopped them** (5 of 150
-   early, 2 after their final generation). Found through the harness's crash
-   report; the runs were kept as results, excluded from the allocation
-   choice, and led to hypothesis H2. The post-merge audit found that the two
-   late failures were completed runs that our driver had discarded; they are
-   now kept (0.880 and 0.800) and the early stops write partial logs.
-7. **Our own records contained errors.** Cross-checking commit messages
-   against result files found a miscounted verdict tally, a species range
-   generalised from three seeds, an overstated comparison and an outdated
-   exit code. Each was re-derived and corrected with an appended note.
-8. **An independent audit after merging found more.** Three auditors
-   re-checked the code, the experiment logic and the report against the
-   data. Every reported number reproduced, but they found the discarded
-   completed runs (item 6, fixed and re-run), the neat-python
-   structural-mutation default, Adam's restart, the wasted Baldwinian elite
-   refinements, a head-start comparison of unlike quantities (5 points; 9–10
-   like for like), and several claims stronger than the data (all corrected
-   here; `DEVLOG.md` #17–#22).
+**How I worked.** I used Claude Code throughout. I reviewed the logs and results
+myself, asked for audits at two key moments (before any code was written, and after we
+thought Q2 was finished), and insisted that problems be fixed before we built on top of
+them.
+
+1. **Baldwinian champions would have been scored with unrefined weights.** The
+   provided code rebuilt the champion from its genome. Under Baldwinian inheritance the
+   genome never holds the refined weights, so the champion would have been tested with
+   untrained weights. This came up in the first read of the code, and I asked for a
+   full audit of the code's assumptions and math before we wrote anything. When the
+   plan was to write the findings down and move on, I asked for them to be fixed first.
+   Fix: store the refined weights and use them only for evaluation and plots. One
+   caveat: the test meant to show that offspring never inherit those weights cannot
+   actually fail, because neat-python 2.0 builds new genes during crossover (the
+   post-merge audit pointed this out). The stronger evidence is in Section 3.3:
+   Baldwinian evaluation changed the stored weights of none of 387,000 refined genomes.
+2. **The output activation could mutate.** *Measured in the audit I asked for.* In 53%
+   of genomes the output node had mutated to tanh or relu, but predictions use a 0.5
+   cutoff, which only makes sense for sigmoid. Fix: the output node is pinned to
+   sigmoid (hidden nodes can still change).
+3. **An exit code had two meanings, and `--generations 0` was ignored.** *Found by the
+   bug-hunting agents I asked for.* I asked for separate agents that would assume the
+   code could be full of bugs. One of them found that a budget overrun and a crash both
+   exited with code 1, and that `--generations 0` silently became 30 generations. The
+   second bug came with the provided code. The first one we made ourselves: our earlier
+   fix to the provided code had made an overrun exit with code 1. Fixed with a separate
+   exit code (4), input checks, and a test that forces an overrun.
+4. **The learning-rate probe used validation data.** The probe used all 350 training
+   points, which include the 70 validation points. This was caught in review, and the
+   probe was rerun on the 280 fit points only. The result was the same (learning rate
+   0.3).
+5. **The pilot misled us twice.** Choosing the allocation with a pilot, instead of by
+   trial and error, was my idea. We wrote a rule in advance to turn the pilot's numbers
+   into an allocation. The rule said to run only 1–3 generations, which made no sense,
+   so we dropped it. The predictions built on the pilot also did badly: 5 of 10 were
+   contradicted, 2 were supported and 3 were inconclusive (Section 3.2).
+6. **Lamarckian runs split into so many species that neat-python stopped them** (5 of
+   150 stopped early, and 2 more failed only after their final generation). The crashes
+   showed up in the harness output. The runs were kept as results, left out of the
+   allocation choice, and led to hypothesis H2. At the time we noted that a crashed run
+   writes no logs, but did not fix it. The post-merge audit I asked for found that the
+   2 late failures were completed runs our driver had thrown away. They are now kept
+   (0.880 and 0.800), and early stops write partial logs.
+7. **Our own records had errors.** While drafting the report, we cross-checked commit
+   messages against the result files. That found a miscounted prediction tally (our
+   first count said "4 supported, 4 contradicted"; the file says 3 supported, 3
+   contradicted and 4 inconclusive, and the wrong count sat in two commit messages and a
+   note in the predictions file for about 50 minutes), a species range generalized from
+   only three seeds, an overstated comparison, and an outdated exit code. Each was
+   corrected with an added note rather than rewritten.
+8. **An independent audit after merging found more.** *I asked for it.* After Q2 was
+   declared done and merged, I asked for an end-to-end audit for any math, code or logic
+   errors we had missed. Three independent audits checked the code, the experiment logic
+   and the report against the data. Every table value reproduced, but they found:
+   - 2 completed runs that had been thrown away (item 6, fixed and re-run)
+   - a neat-python default that gave every run one structural mutation per child
+   - Adam restarting at every refinement
+   - wrong numbers in the text: the head start (reported as 5 points, but 9–10 when
+     compared like for like), a 0.67–0.87 range that should be 0.67–0.84, and the
+     accuracy of the best straight-line cut (given as about 0.75; Section 2 has the
+     corrected 0.70 and 0.62)
+   - how much the repeated Baldwinian elite refinements cost (24–29% of allocation B's
+     steps). We knew about this repeat from the start and had kept it as a design
+     choice that I approved, but the audit measured its size and showed it muddies the
+     depth comparison.
+   - several claims stronger than the data
+
+   All are corrected here (`DEVLOG.md` #17–#22).
 
 Smaller issues are in `DEVLOG.md`, including a false warning in the provided
 `package_submission.sh`: it reports that Q2 has no training runs because
@@ -405,11 +438,18 @@ Scores and figures are regenerated by `experiments/score_*.py`,
 `experiments/make_figures.py` and `experiments/make_smallnet_figure.py`.
 Five test suites (gradient, fixes to the provided code, driver,
 connection limit, harness) all pass. The work took about 3 hours 10 minutes
-of the suggested 5, plus about an hour for the post-merge audit and its
-corrections. The author set the questions, wrote every prediction
-and interpreted every result; implementation pieces (gradient engine,
-harness, connection limit, figures, a first report draft) were delegated to
-coding agents, whose tests were re-run and outputs checked before each
+of the suggested 5, plus about 40 minutes for the post-merge audit and its
+corrections.
+
+**Who did what.** I chose the directions: audit before coding, fix problems
+before building on them, choose the allocation with a pilot instead of trial
+and error, keep testing hypotheses until we had a well-tested one, write the
+report as a paper, and audit everything end to end after merging. I
+approved the plans for the main experiments (allocation, confirmation, the first mechanism round
+and the complexity frontier) before they ran, and reviewed the logs and
+results. I used Claude Code and helper agents for the implementation: the
+code, the scoring scripts, the prediction files, the figures and the report
+drafts. Their tests were re-run and their outputs checked before each
 commit.
 
 ---

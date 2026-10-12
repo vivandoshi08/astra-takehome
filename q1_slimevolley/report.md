@@ -207,84 +207,146 @@ show the progression net camper → chasing → rallying. Where the table rows c
     rally, which is why selection hands over to score.
   - `reward_check`'s ordering test still passes the phase-1 formula at 20, 50 and 100
     probe games. A 10-game run had flagged it, but at that size the raw-score gaps
-    were within noise; I over-read it at first (*What went wrong* #10).
+    were within noise, and it was over-read at first (*What went wrong* #10).
   - All three champions were selected in phase 2 (generations 99 / 141 / 128; the
     switch was at ~82).
 
 ## What went wrong, and how I found it
 
-1. **The opponent remembered the previous game.** `env.reset()` never resets the
-   built-in opponent's RNN: seed 7 replayed twice gave 2903 steps, then 1194. An auditor
-   agent found 30 of 30 replays diverged at step 0. Fixed in `play_episode`; a replay
-   now matches a fresh env exactly.
-2. **The champion was the luckiest score, and the curve partly measured the seeds.**
-   The shipped driver keeps the highest training fitness ever seen. Training raw score
-   overstates validation by about +0.3 in the phase where champions are chosen (*Fitness
-   curve*), and validation overstates held-out too: the baseline's −4.55 became −4.78. Fix: a validation-picked champion, a validation track on the
-   curve, and only held-out numbers reported.
-3. **Five runs learned nothing, and at first the logs could only say *that*.**
-   - 89% of games were 5–0 losses, and 85–100% of genomes per generation had the same
-     points vector, decided by the serve.
-   - I added contact counting by wrapping `Particle.bounce`. Trajectories are
-     byte-identical with and without it. Contacts were 1.5 per game, the same as
-     random play.
-   - Replays showed the net camper.
-4. **Pipeline or objective?** A generation-0 champion went unbeaten for 83 generations.
-   `pipeline_test.py` swaps fitness for contacts in the same `evolve.py`: contacts went
-   1.57 → 3.10, so the pipeline works. Score noise (5-game SE 0.15) swamped a 0.20
-   camper → tracker gap, which led to the curriculum.
-5. **I introduced a reward hack myself.** My first return bonus was uncapped, so a 0–0
-   rally to the time limit out-earned a quick 5–0 win. Fixed by a cap of 9 plus
-   enforcing `B + R·cap < 1`. `reward_check.py` guards every formula.
-6. **Budget plumbing.**
-   - The shipped generation-boundary stop could never fire (7 × ⌊100M/7⌋ < 100M), so
-     up to 5.35% of the budget was thrown away mid-generation.
-   - My first guard then stopped runs at 81%, because validation jobs piled onto 3
-     workers.
-   - One episode per job fixed it: identical results, spread 11% → 1.3%, 97–99% of
-     budget used. `budget.py` is untouched.
-7. **Smaller bugs, each caught by a test:**
-   - a fixed t = 1.984 for 20-episode CIs (should be 2.093)
-   - the relative-input change crashing hand-written policies
-   - snapshot labels colliding, and the 20M snapshot being skipped
-   - replays truncated at 1400 steps
-8. **A run died silently.** `evolve.py` only caught budget stops, and the script sent
-   stderr to `/dev/null`. Reproduced with stderr kept: neat's `RuntimeError` (33
-   species × 2 > population 64). Crashes are now recorded and outputs still written.
-   The rerun was byte-identical with 3 vs 9 workers.
-9. **The method worked on 1 of 3 seeds, and five plausible fixes showed no large
-   effect.** The cause was the action mapping, found by ablation. Full story below.
-10. **I over-read a 10-game check.** Re-running `reward_check` with the final champions
-    over 10 probe games, the phase-1 formula failed the ordering test, and I wrote it
-    up as "phase 1 is misaligned at the top end", citing seed 0 as having "the most
-    returns". The independent math audit (below) found that seed 1 has the most
-    returns, and that the test *passes* at 20, 50 and 100 games: the 10-game raw gaps
-    were noise. What survives is the held-out observation in *Behavior*.
-11. **A statistic was dominated by one point.** The analyzer's seed-difficulty figure
-    ("72–83% of jitter") included the generation where the curriculum switches from
-    returns to score. That one pair, where the fitness formula itself changes, drove the
-    whole number. The analyzer now excludes phase-crossing pairs and reports r² per phase
-    (0.01–0.34).
-12. **Final math audit.** Before merging, a separate auditor agent recomputed every
-    statistical and RL claim:
-    - exact t and independent bootstrap CIs, all of which reproduce
-    - pre-registration timing: the script was committed 2 s before the runs started
-    - the validation tie, seed separation, budget sums, and the action-mapping code path
-    - the shaping bound, which holds per game only, and a bootstrap index off by one
-      (no effect at 3 decimals)
+**How I worked.** I used Claude Code throughout. I reviewed the run logs and replays
+myself, decided what to test, pushed back on results that looked wrong or too
+convenient, and asked for independent audits before trusting the big numbers.
 
-    #10 and #11, the headline's missing between-seed CI, and a stale population-mean
-    figure came from that audit. All are fixed, and I re-verified its numbers with
-    scipy.
+1. **The opponent remembered the previous game.** Calling
+   `env.reset()` did not reset the built-in opponent's memory (it is a recurrent
+   network), so the same seed could give a different game: seed 7 played twice gave
+   2903 steps, then 1194. We caught this while adding seeding and fixed it in
+   `play_episode`. A few minutes later, an independent audit that I had asked for (to
+   look for anything that could give us misleading results) confirmed it: 30
+   of 30 replays went a different way from the very first step. Now a replay matches a
+   fresh environment exactly.
+2. **The champion was just the luckiest score, and the fitness curve partly measured
+   how easy the seeds were.** *Found by the audit I asked for.* The original
+   driver kept whichever genome had the highest training score ever seen. With only 5
+   noisy games per genome, that mostly picks luck. Training score overstates validation
+   score by about +0.3 in the phase where champions are picked (*Fitness curve*), and
+   validation overstates held-out too: the baseline's −4.55 on validation became −4.78
+   on held-out games. I then asked to see the exact math and to check for statistical
+   biases, which added the winner's-curse check to `analyze_run.py`. Fix: pick the
+   champion on fixed validation seeds, plot a validation line on the curve, and report
+   only held-out numbers.
+3. **Five runs learned nothing, and at first the logs could only show *that*, not
+   *why*.** The short sample runs were my idea, to catch problems before a full run.
+   They showed that nothing was learning:
+   - 89% of games were 5–0 losses. In most generations, 85% or more of the genomes had
+     exactly the same points, decided by the serve (the full range per generation was
+     50–100%).
+   - I asked whether we were logging enough to tell where a problem came from. The
+     answer was no: the logs could show *that* something was wrong but not *why*, so we
+     added ball-contact counting by wrapping `Particle.bounce` (games are byte-identical
+     with and without the wrapper). Contacts were about 1.5–1.7 per game, close to
+     random play's 1.4.
+   - I asked to watch replays next to the logs. The replays showed the "net camper":
+     an agent that sits at the net and never chases the ball.
+   - I also questioned the plan to compare four settings with 5M-step runs ("do we
+     expect to see gains after 5M steps?"). 5M steps could not answer that, so we moved
+     to 20M-step tests.
+4. **Was the pipeline broken, or the goal?** First, we measured that score noise
+   (5-game standard error 0.15) was almost as big as the gap between a net camper and a
+   ball-tracker (0.20). I picked one of the candidate fixes, relative inputs (ball
+   position minus my position). It did not help. Then the logs showed a generation-0
+   champion that went unbeaten for 83 generations. To tell a broken pipeline from a bad
+   goal, we wrote `pipeline_test.py`, which runs the same
+   `evolve.py` but rewards ball contacts instead of score. Contacts went from 1.57 to
+   3.10, so the pipeline works. The problem was the score goal, and that led to the
+   curriculum. Around the same time I pointed out from the replays that the agents
+   jumped a lot and touched the ball but did not move to it, so we added movement and
+   jump-timing logs.
+5. **We nearly introduced a reward hack.** I warned that any new reward shaping must
+   not open up reward hacking. Checking for that right away showed that our own new
+   return bonus had no cap, so a
+   0–0 rally to the time limit could earn more than a quick 5–0 win. No run had
+   exploited it yet (the most returns in any game was 7). Fixed with a cap of 9 and a
+   rule that shaping in one game must stay below one point (`B + R·cap < 1`).
+   `reward_check.py` checks every formula against this.
+6. **Budget bookkeeping.**
+   - The audit I asked for found that the original "stop at a generation boundary" check could
+     never fire (7 × ⌊100M/7⌋ < 100M). So runs ended in the middle of a generation and
+     threw that generation away. On a 5M-step sample run this wasted 5.35% of the
+     budget; for a 100M run the audit estimated about 1%.
+   - Our first fix then stopped runs too early, at 81–90% of the budget,
+     because validation jobs piled onto 3 workers.
+   - Running one episode per job fixed it: same results, worker imbalance fell from 11%
+     to 1.3%, and runs used 97–99% of the budget. `budget.py` was never edited.
+7. **Smaller bugs, each caught by a test.**
+   - a fixed t = 1.984 for 20-episode confidence intervals (it should be 2.093), found
+     while testing
+   - the relative-input change crashing the hand-written test policies
+   - snapshot labels colliding, and the 20M snapshot being skipped (the skip showed up
+     when I asked to see the 10M and 20M replays)
+   - replays cut off at 1400 steps, found by the audit
+8. **A run died silently.** One run stopped short with no
+   end time. `evolve.py` only caught budget stops, and the script threw away error
+   messages (stderr went to `/dev/null`). Rerunning with error messages kept showed
+   neat's `RuntimeError` (33 species × 2 > population 64). Crashes are now recorded
+   and outputs are still written, and the rerun was byte-identical with 3 or 9
+   workers. One side effect was caught later: while reproducing the crash, we had
+   moved the crashed run's original logs, including its budget log, out of the
+   repo. My rule-compliance check (item 12) found this, and the logs were put back.
+9. **The method worked on only 1 of 3 seeds.** *I refused to accept it.* The agent's
+   plan was to write the result up as "works, but depends on
+   the seed" and move on. I said we had time and should fix it across seeds. The agent
+   had already decided the cause was weights that were too small and had set up a test
+   of that one fix. I asked it to come up with five different hypotheses and test them
+   side by side instead. The weight-size fix failed on all three seeds, and so did the
+   other four. The real cause was the action mapping (*How the replication was fixed*).
+10. **A 10-game check was over-read.** *Found by the math audit I asked for.* After the
+    final runs the agent re-ran `reward_check` with only 10 probe games and announced a
+    "new finding": that phase 1 is misaligned at the top end, with seed 0 having "the
+    most returns". Before merging, I asked for an independent math audit. It found two
+    mistakes:
+    - The ordering test *passes* at 20, 50 and 100 games, so the 10-game failure was
+      noise.
+    - "Most returns" was a misreading, not noise. Even the 10-game table showed seed 1
+      ahead (26.8 returns against seed 0's 25.5), and the 25.8 quoted for seed 0 was its
+      phase-1 fitness, not its returns.
+
+    What survives is the held-out observation in *Behavior*.
+11. **One data point drove a whole statistic.** *Found by the math audit I asked for.* The analyzer
+    said "72–83% of jitter" came from seed difficulty. That number was a ratio of
+    standard deviations, not a share of variance. It also included the one generation
+    where the curriculum switches from rewarding returns to rewarding score, and that
+    single point drove the whole number. The analyzer now skips pairs that cross the
+    switch and reports r² per phase (0.01–0.34).
+12. **Final math audit and rule check.** *I asked for both.* When the agent reported 3
+    of 3 seeds at T3 or better and asked to merge, I told it to first confirm that all
+    the statistics and RL math checked out, and only then merge. An independent audit
+    recomputed every statistical and RL claim:
+    - exact t and independent bootstrap confidence intervals, which all reproduce
+    - pre-registration timing: the script was committed 2 s before the runs started
+    - the validation tie, seed separation, budget totals, and the action-mapping code
+      path
+    - the shaping bound, which holds per game only, and a bootstrap index that was off
+      by one (no effect at 3 decimals)
+
+    Items 10 and 11, the headline's missing between-seed confidence interval, and an
+    outdated population-mean figure all came from this audit. All are fixed, and the
+    numbers were re-checked with scipy. I also asked for a check that we had not
+    touched anything the rules forbid. That found the moved logs from item 8 and added
+    the disclosures in *Rule compliance*.
 
 ## How the replication was fixed
 
-**1. The problem.** With the original mapping, the identical curriculum command reached
-−0.37 on seed 0 but stayed a net camper on seeds 1 and 2 (−4.77, −4.79). I fixed seed
-0 as the headline before running them.
+**1. The problem.** With the original mapping, the same curriculum command reached
+−0.37 on seed 0 but stayed a net camper on seeds 1 and 2 (−4.77, −4.79). Before seeds
+1 and 2 ran, we decided in chat to keep seed 0 as the headline either way. That
+decision was first written into a committed file after those runs had started, but
+before their results came in. The agent's plan was to report the method as
+seed-dependent and move on; I asked to fix it instead (*What went wrong* #9).
 
 **2. Five hypotheses, one change each** (phase 1, 15M steps, fresh seeds 10–12;
-`experiments/discovery_results.md`):
+`experiments/discovery_results.md`). This was my request: the agent had already settled
+on H1 and set up a test of only that one fix.
 
 | hypothesis | change | escaped |
 |---|---|---|
@@ -298,7 +360,12 @@ show the progression net camper → chasing → rallying. Where the table rows c
 H1's failure was the clue. It grew tracking weights as large as seed 0's champion's
 (7.8–17.9) and still didn't chase.
 
-**3. The diagnosis, by ablating seed 0's champion** (probe seeds):
+**3. The diagnosis, by taking seed 0's champion apart** (probe seeds). After all five
+hypotheses failed, the agent recommended wrapping up Q1 and merged it, calling the
+escape "a rare event, roughly 1 in 20". I asked why the method kept failing on the
+other seeds, and told it to keep trying as long as it stayed within the rules. We
+then removed key connections from the champion to see which ones
+mattered:
 
 | variant | phase-1 fitness | contacts |
 |---|---|---|
